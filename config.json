@@ -1,0 +1,13 @@
+{
+    "inputDir": "/home/travis/Documents/Accurion/src",
+    "outputDir": "/home/travis/Documents/Accurion/public",
+    "componentsDir": "/home/travis/Documents/Accurion/src/ssg-components/",
+
+    "generateSitemap": true,
+
+    "canonicalBase": "https://www.accurionadvisors.com/",
+    "canonicalIgnore": [
+        "/404.html"
+    ],
+    "metaLang": "en"
+}
