@@ -4,8 +4,13 @@
     "componentsDir": "/home/travis/Documents/Accurion/src/ssg-components/",
 
     "generateSitemap": true,
+    "sitemapIgnore": [
+        "/404.html"
+    ],
 
-    "canonicalBase": "https://www.accurionadvisors.com/",
+    "baseAddress": "http://localhost/",
+
+    "canonicalBase": "http://localhost/",
     "canonicalIgnore": [
         "/404.html"
     ],
