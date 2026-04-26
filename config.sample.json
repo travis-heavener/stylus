@@ -10,7 +10,6 @@
 
     "baseAddress": "http://localhost/",
 
-    "canonicalBase": "http://localhost/",
     "canonicalIgnore": [
         "/404.html"
     ],

@@ -12,33 +12,44 @@ def inject_html(updated_files: tuple[str]) -> None:
     components = {
         str(p).removeprefix(config.components_dir).replace("/", ".").removesuffix(".html")
         : p.read_text()
-            .replace("%%TIMESTAMP%%", datetime.now().strftime("%b. %Y"))
         for p in Path(config.components_dir).rglob("*")
         if p.is_file()
     }
+
+    # Precompile pattern
+    components_pattern = re.compile(
+        rf"^(\s*)<\$\s*({ '|'.join([k for k in components.keys()]) })\s*\/\s*>",
+        flags=re.MULTILINE
+    )
+
+    # Shorthand to Regex replace elements
+    def comp(m: re.Match) -> str:
+        indent = m.group(1) # Fix indents
+        return indent + components[ m.group(2) ].replace("\n", f"\n{indent}")
 
     # Find each HTML file in the subtree
     html_files = tuple( [Path(f) for f in updated_files if f.endswith(".html")] )
 
     for file in html_files:
         # Replace all pseudo-elements with their HTML components
-        body = file.read_text()
+        body = components_pattern.sub( comp, file.read_text() )
 
-        # Regex replace elements
-        def comp(m: re.Match) -> str:
-            # Fix indents
-            indent = m.group(1)
-            return indent + components[ m.group(2) ].replace("\n", f"\n{indent}")
-
-        body = re.sub(
-            rf"^(\s*)<\s*({ '|'.join([k for k in components.keys()]) })\s*\/\s*>",
-            comp,
-            body,
-            flags=re.MULTILINE
-        )
+        # Inject pseudo-components AFTER components
+        body = inject_pseudo_components(body)
 
         # Write back to file
         file.write_text(body)
 
         # Log if verbose
         vlog(f"Built {file}")
+
+# Injects pseudo-components into the HTML
+__datetime_pattern = re.compile(r'<\$\s*Datetime\s*:\s*"([^"]+)"\s*/>')
+def inject_pseudo_components(body: str) -> str:
+    # Datetime pseudos
+    body = __datetime_pattern.sub(
+        lambda m: datetime.now().strftime(m.group(1)),
+        body
+    )
+
+    return body

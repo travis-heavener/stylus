@@ -26,7 +26,7 @@ def audit_html(html_files: tuple[str]) -> None:
         # Verify canonical tag
         short_path = file.removeprefix(config.output_dir).removesuffix("index.html")
         if short_path not in config.canonical_ignore:
-            canonical = config.canonical_base + short_path.removeprefix("/")
+            canonical = config.base_address + short_path.removeprefix("/")
             canonical_pat_a = rf"""rel=['"]canonical['"].*?\bhref=['"]{canonical}['"]"""
             canonical_pat_b = rf"""href=['"]{canonical}['"].*?\brel=['"]canonical['"]"""
             if not re.search(rf"""<link\s.*?\b({canonical_pat_a})|({canonical_pat_b}).*?>""", body):

@@ -26,7 +26,9 @@ class _Config:
             self.output_dir = _validate_path( data, "outputDir" )
             self.components_dir = _validate_path( data, "componentsDir" )
 
+            # Parse base address
             self.base_address = data["baseAddress"]
+            if not self.base_address.endswith("/"): self.base_address += "/"
 
             # Sitemap fields
             self.generate_sitemap = data["generateSitemap"]
@@ -35,9 +37,6 @@ class _Config:
             # HTML auditor
             self.meta_lang = data["metaLang"]
             self.canonical_ignore: list[str] = data["canonicalIgnore"]
-
-            self.canonical_base: str = data["canonicalBase"]
-            if not self.canonical_base.endswith("/"): self.canonical_base += "/"
         except KeyError as e:
             err(f"Failed to parse config file, missing JSON key: \"{e}\"")
             exit(1)
