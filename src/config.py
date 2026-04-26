@@ -25,9 +25,12 @@ class _Config:
             self.input_dir = _validate_path( data, "inputDir" )
             self.output_dir = _validate_path( data, "outputDir" )
             self.components_dir = _validate_path( data, "componentsDir" )
-            
-            # Boolean fields
+
+            self.base_address = data["baseAddress"]
+
+            # Sitemap fields
             self.generate_sitemap = data["generateSitemap"]
+            self.sitemap_ignore: list[str] = data["sitemapIgnore"]
 
             # HTML auditor
             self.meta_lang = data["metaLang"]

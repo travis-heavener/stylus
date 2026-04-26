@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 import os
 import pathlib
 import re
-import requests
 import shutil
 
 from config import config
@@ -88,14 +87,15 @@ def build_sitemap(files: tuple[str]) -> None:
 
         # Get mod time of all files
         for file in files:
-            # Determine "pretty" path (remove ./public and index.html)
-            pretty_path = file[(2 if file.startswith("./") else 0):][7:] \
-                .replace("index.html", "")
+            # Determine "pretty" path
+            pretty_path = "/" + file.removeprefix(config.output_dir) \
+                .removeprefix("/") \
+                .removesuffix("index.html")
 
-            if pretty_path == "404.html": continue
+            if pretty_path in config.sitemap_ignore: continue
 
             # Calculate index priority
-            priority = max(0.2, 1 - 0.2 * pretty_path.count("/"))
+            priority = max(0.2, 1.2 - 0.2 * pretty_path.count("/"))
 
             # Determine timestamp
             mtime = os.path.getmtime(file)
@@ -104,7 +104,7 @@ def build_sitemap(files: tuple[str]) -> None:
 
             # Write
             f.write(f"""    <url>
-        <loc>https://wowtravis.com/{pretty_path}</loc>
+        <loc>{config.base_address}{pretty_path.removeprefix("/")}</loc>
         <lastmod>{timestamp}</lastmod>
         <priority>{priority:.2f}</priority>
     </url>\n""")
