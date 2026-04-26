@@ -16,6 +16,11 @@ def inject_html(updated_files: tuple[str]) -> None:
         if p.is_file()
     }
 
+    # Replace pseudo-components in components
+    for key in components.keys():
+        # Inject pseudo-components AFTER components
+        components[key] = inject_pseudo_components(components[key])
+
     # Precompile pattern
     components_pattern = re.compile(
         rf"^(\s*)<\$\s*({ '|'.join([k for k in components.keys()]) })\s*\/\s*>",
@@ -34,7 +39,7 @@ def inject_html(updated_files: tuple[str]) -> None:
         # Replace all pseudo-elements with their HTML components
         body = components_pattern.sub( comp, file.read_text() )
 
-        # Inject pseudo-components AFTER components
+        # Inject pseudo-components that may be hiding in html file
         body = inject_pseudo_components(body)
 
         # Write back to file
