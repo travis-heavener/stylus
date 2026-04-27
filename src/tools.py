@@ -36,7 +36,7 @@ def copy_if_newer(src: str, dest: str) -> str:
     return shutil.copy2(src, dest)
 
 # Used by shutil.copytree to ignore the root ssg-components directory
-def ignore_root_ssg_components(dir: str, contents: any) -> None:
+def ignore_root_ssg_components(dir: str, _) -> None:
     if os.path.abspath(dir) == os.path.abspath(config.input_dir):
         return {"ssg-components"}
     return set()
