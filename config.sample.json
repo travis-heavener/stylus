@@ -1,17 +1,13 @@
 {
-    "inputDir": "/home/travis/Documents/Accurion/src",
-    "outputDir": "/home/travis/Documents/Accurion/public",
-    "componentsDir": "/home/travis/Documents/Accurion/src/ssg-components/",
+    "inputDir": "example-src",
+    "outputDir": "example-public",
+    "componentsDir": "example-components",
 
     "generateSitemap": true,
-    "sitemapIgnore": [
-        "/404.html"
-    ],
+    "sitemapIgnore": [],
 
     "baseAddress": "http://localhost/",
 
-    "canonicalIgnore": [
-        "/404.html"
-    ],
+    "canonicalIgnore": [],
     "metaLang": "en"
 }

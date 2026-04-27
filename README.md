@@ -17,9 +17,10 @@ The `src/main.py` script has a few ephemeral controls that are controlled outsid
 
 | Argument | Usage                    | Description                                                   |
 |----------|--------------------------|---------------------------------------------------------------|
+| -a       | `python3 src/main.py -a` | Skips HTML audit on all assets.                               |
+| -c       | `python3 src/main.py -c` | Uses color for printing information to the terminal.          |
 | -f       | `python3 src/main.py -f` | Copy & rebuild all files instead of those that are unchanged. |
 | -v       | `python3 src/main.py -v` | Prints additional debug info to the terminal.                 |
-| -c       | `python3 src/main.py -c` | Uses color for printing information to the terminal.          |
 | -x       | `python3 src/main.py -x` | Skips minification for all assets.                            |
 
 Note: to use multiple arguments, combine them (ex: `-vcf` will print verbose logs with colored output and force-rebuilds all assets)

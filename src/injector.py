@@ -10,7 +10,7 @@ from tools import vlog
 def inject_html(updated_files: tuple[str]) -> None:
     # Read all components
     components = {
-        str(p).removeprefix(config.components_dir).replace("/", ".").removesuffix(".html")
+        str(p).removeprefix(config.components_dir).removeprefix("/").replace("/", ".").removesuffix(".html")
         : p.read_text()
         for p in Path(config.components_dir).rglob("*")
         if p.is_file()
@@ -29,15 +29,19 @@ def inject_html(updated_files: tuple[str]) -> None:
 
     # Shorthand to Regex replace elements
     def comp(m: re.Match) -> str:
-        indent = m.group(1) # Fix indents
-        return indent + components[ m.group(2) ].replace("\n", f"\n{indent}")
+        indent = m.group(1).replace("\n", "") # Fix indents
+        return indent + components[ m.group(2).strip() ].replace("\n", f"\n{indent}")
 
     # Find each HTML file in the subtree
     html_files = tuple( [Path(f) for f in updated_files if f.endswith(".html")] )
 
     for file in html_files:
         # Replace all pseudo-elements with their HTML components
-        body = components_pattern.sub( comp, file.read_text() )
+        try:
+            body = components_pattern.sub( comp, file.read_text() )
+        except KeyError as e:
+            err(f"Invalid component: {e}")
+            exit(1)
 
         # Inject pseudo-components that may be hiding in html file
         body = inject_pseudo_components(body)

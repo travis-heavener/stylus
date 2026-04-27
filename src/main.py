@@ -41,7 +41,10 @@ if __name__ == "__main__":
         build_sitemap(html_files)
 
         # 4. Run accessibility audit
-        audit_html(html_files)
+        if not isarg("a"):
+            audit_html(html_files)
+        else:
+            warn("Skipping HTML audit")
 
         # 5. Minify assets
         if not isarg("x"):
