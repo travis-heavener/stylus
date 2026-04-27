@@ -2,7 +2,7 @@
 ## Travis Heavener
 
 ## About
-Stylus is a static site generator (SSG) that builds with no additional markup bloat.
+Stylus is a simple static site generator (SSG) that builds with no additional markup bloat.
 
 ## Getting Started
 Copy the sample configuration file (config.sample.json) to config.json in the root directory of this repository.
