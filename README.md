@@ -8,7 +8,6 @@ Stylus is a simple static site generator (SSG) that builds with no additional ma
 Copy the sample configuration file (config.sample.json) to config.json in the root directory of this repository.
 
 Update the configuration settings as needed.
-
 See [CONFIG.md](CONFIG.md) for documentation.
 
 ### Command-Line Arguments
