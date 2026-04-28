@@ -35,12 +35,6 @@ def copy_if_newer(src: str, dest: str) -> str:
     _files_copied.append(dest)
     return shutil.copy2(src, dest)
 
-# Used by shutil.copytree to ignore the root ssg-components directory
-def ignore_root_ssg_components(dir: str, _) -> None:
-    if os.path.abspath(dir) == os.path.abspath(config.input_dir):
-        return {"ssg-components"}
-    return set()
-
 # Used to copy the new source
 def copy_source() -> tuple[str]:
     if os.path.exists(config.output_dir):
@@ -50,7 +44,7 @@ def copy_source() -> tuple[str]:
             shutil.rmtree(config.output_dir)
 
             # Copy new
-            shutil.copytree(config.input_dir, config.output_dir, ignore=ignore_root_ssg_components, copy_function=copy)
+            shutil.copytree(config.input_dir, config.output_dir, copy_function=copy)
             log("Cleaned existing build content.")
         else:
             # Determine mtime of newest ssg component
@@ -60,7 +54,7 @@ def copy_source() -> tuple[str]:
             )
 
             # Copy only updated
-            shutil.copytree(config.input_dir, config.output_dir, ignore=ignore_root_ssg_components, copy_function=copy_if_newer, dirs_exist_ok=True)
+            shutil.copytree(config.input_dir, config.output_dir, copy_function=copy_if_newer, dirs_exist_ok=True)
 
             if len(_files_copied) > 0:
                 log("Updated modified build content.")
@@ -69,7 +63,7 @@ def copy_source() -> tuple[str]:
                 exit(0)
     else:
         # Initial copy
-        shutil.copytree(config.input_dir, config.output_dir, ignore=ignore_root_ssg_components, copy_function=copy)
+        shutil.copytree(config.input_dir, config.output_dir, copy_function=copy)
     
     # Return updated files
     return tuple(_files_copied)
