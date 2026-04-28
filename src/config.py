@@ -8,7 +8,7 @@ from logger import *
 # Helper to validate arguments
 def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
     # Get path of root directory
-    root_path = Path(__file__).resolve().parent
+    root_path = Path(__file__).resolve().parent.parent
 
     # Check if absolute or relative path exists
     rel_path = os.path.join(root_path, data[key])
@@ -27,7 +27,7 @@ def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
         vlog(f"Created missing output directory: {data[key]}")
 
         # Properly format path now that it exists
-        data[key] = os.path.abspath(data[key])
+        return os.path.abspath(data[key])
     else:
         err(f"Unknown path for \"{key}\": \"{data[key]}\"")
         raise FileNotFoundError()
