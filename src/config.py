@@ -53,9 +53,10 @@ class _Config:
             # Sitemap fields
             self.generate_sitemap = data["generateSitemap"]
             self.sitemap_ignore: list[str] = data["sitemapIgnore"]
+            self.truncate_sitemap_index_files = data["truncateSitemapIndexFiles"]
 
             # HTML auditor
-            self.meta_lang = data["metaLang"]
+            self.html_lang = data["htmlLang"]
             self.canonical_ignore: list[str] = data["canonicalIgnore"]
         except KeyError as e:
             err(f"Failed to parse config file, missing JSON key: \"{e}\"")

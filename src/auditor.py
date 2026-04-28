@@ -37,7 +37,7 @@ def audit_html(html_files: tuple[str]) -> None:
             fail_with_msg("Missing meta viewport tag")
 
         # Check for lang="en"
-        if not re.search(rf"""<html\s.*?\blang=['"]{config.meta_lang}['"].*?>""", body):
+        if not re.search(rf"""<html\s.*?\blang=['"]{config.html_lang}['"].*?>""", body):
             fail_with_msg("Missing HTML lang=\"en\"")
 
         # Check for alt text on img elements

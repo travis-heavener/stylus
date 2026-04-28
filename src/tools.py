@@ -89,10 +89,14 @@ def build_sitemap(files: tuple[str]) -> None:
         for file in files:
             # Determine "pretty" path
             pretty_path = "/" + file.removeprefix(config.output_dir) \
-                .removeprefix("/") \
-                .removesuffix("index.html")
+                .removeprefix("/")
 
+            # Check if file is allowed in sitemap
             if pretty_path in config.sitemap_ignore: continue
+
+            # Remove index.html if needed
+            if config.truncate_sitemap_index_files:
+                pretty_path = pretty_path.removesuffix("index.html")
 
             # Calculate index priority
             priority = max(0.2, 1.2 - 0.2 * pretty_path.count("/"))

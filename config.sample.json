@@ -4,10 +4,11 @@
     "componentsDir": "example-components",
 
     "generateSitemap": true,
+    "truncateSitemapIndexFiles": true,
     "sitemapIgnore": [],
 
     "baseAddress": "http://localhost/",
 
     "canonicalIgnore": [],
-    "metaLang": "en"
+    "htmlLang": "en"
 }
