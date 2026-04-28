@@ -8,7 +8,7 @@ from logger import *
 # Helper to validate arguments
 def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
     # Get path of root directory
-    root_path = Path(__file__).resolve().parent.parent
+    root_path = os.getcwd()
 
     # Check if absolute or relative path exists
     rel_path = os.path.join(root_path, data[key])
@@ -35,6 +35,9 @@ def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
 # Config singleton
 class _Config:
     def __init__(self, path: str) -> None:
+        # Update CWD to project root
+        os.chdir( Path(__file__).resolve().parent.parent )
+
         # Load json
         with open(path, "r") as f:
             data = json.load(f)

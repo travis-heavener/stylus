@@ -7,7 +7,6 @@ Date: April 23, 2026
 
 """
 
-import os
 from pathlib import Path
 from time import time
 import traceback
@@ -21,9 +20,6 @@ from tools import *
 if __name__ == "__main__":
     # Debug profiling
     start = time()
-
-    # Update CWD to project root
-    os.chdir( Path(__file__).resolve().parent )
 
     # Verify config file was loaded
     if config is None:
