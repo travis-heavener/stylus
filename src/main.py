@@ -22,9 +22,6 @@ if __name__ == "__main__":
     # Debug profiling
     start = time()
 
-    # Update CWD to project root
-    os.chdir( Path(__file__).resolve().parent.parent )
-
     # Load config
     try:
         load_config()

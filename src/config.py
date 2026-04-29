@@ -98,8 +98,16 @@ def load_config():
 
     path = _get_config_path()
     if path is None:
+        # Use default path
         path = Path(__file__).resolve().parent.parent / "config.json"
+    else:
+        # Resolve path
+        path = Path(path).expanduser().resolve()
 
+    # Update CWD to project root after resolving path to config file
+    os.chdir( Path(__file__).resolve().parent.parent )
+
+    # Load config
     _config = _Config(path)
 
 # Get config file
