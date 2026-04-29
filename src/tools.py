@@ -4,7 +4,7 @@ import pathlib
 import re
 import shutil
 
-from config import config
+from config import get_config
 from logger import *
 
 # File copy helpers
@@ -37,6 +37,8 @@ def copy_if_newer(src: str, dest: str) -> str:
 
 # Used to copy the new source
 def copy_source() -> tuple[str]:
+    config = get_config()
+
     if os.path.exists(config.output_dir):
         # Handle copies
         if isarg("f"):
@@ -70,6 +72,8 @@ def copy_source() -> tuple[str]:
 
 # Creates public/sitemap.xml with update timestamps for all HTML files
 def build_sitemap(files: tuple[str]) -> None:
+    config = get_config()
+
     # Overwrite any existing sitemap
     sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
 
@@ -157,6 +161,8 @@ def minify_js(text: str) -> str:
 
 # Minifies HTML, CSS, and JS files in-place
 def minify() -> None:
+    config = get_config()
+
     # Get files
     html_files = tuple( [p for p in pathlib.Path(config.output_dir).rglob("*.html")] )
     css_files = tuple( [p for p in pathlib.Path(config.output_dir).rglob("*.css")] )

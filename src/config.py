@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 import os
-from sys import exit
+import sys
 
 from logger import *
 
@@ -35,9 +35,6 @@ def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
 # Config singleton
 class _Config:
     def __init__(self, path: str) -> None:
-        # Update CWD to project root
-        os.chdir( Path(__file__).resolve().parent.parent )
-
         # Load json
         with open(path, "r") as f:
             data = json.load(f)
@@ -63,16 +60,50 @@ class _Config:
             self.canonical_ignore: list[str] = data["canonicalIgnore"]
         except KeyError as e:
             err(f"Failed to parse config file, missing JSON key: \"{e}\"")
-            exit(1)
+            sys.exit(1)
         except:
             err(f"Failed to parse config file")
-            exit(1)
+            sys.exit(1)
 
-# Get path to config file
-__config_path = Path.joinpath(Path(__file__).resolve().parent.parent, "config.json")
+# Gets the config path, either default or from argv
+def _get_config_path():
+    argv = sys.argv[1:]
+    config_path = None
+    cleaned_args = []
 
-# Global config object
-if Path.exists(__config_path):
-    config = _Config( str(__config_path) )
-else:
-    config = None
+    # Check argv
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--config":
+            if i + 1 >= len(argv):
+                err("--config requires a path")
+                exit(1)
+            config_path = argv[i + 1]
+            i += 2
+        else:
+            cleaned_args.append(arg)
+            i += 1
+
+    # Put cleaned args back
+    sys.argv = [sys.argv[0]] + cleaned_args
+    return config_path
+
+# Global hidden config variable
+_config = None
+
+# Loads global config variable
+def load_config():
+    global _config
+
+    path = _get_config_path()
+    if path is None:
+        path = Path(__file__).resolve().parent.parent / "config.json"
+
+    _config = _Config(path)
+
+# Get config file
+def get_config():
+    if _config is None:
+        raise RuntimeError("Config not loaded")
+    return _config

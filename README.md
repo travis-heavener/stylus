@@ -1,10 +1,12 @@
 # Stylus
-## Travis Heavener
+### Travis Heavener
 
 ## About
+
 Stylus is a simple static site generator (SSG) that builds with no additional markup bloat.
 
 ## Getting Started
+
 Copy the sample configuration file (config.sample.json) to config.json in the root directory of this repository.
 
 Update the configuration settings as needed.
@@ -14,13 +16,14 @@ See [CONFIG.md](CONFIG.md) for documentation.
 
 The `src/main.py` script has a few ephemeral controls that are controlled outside of the configuration file:
 
-| Argument | Usage                    | Description                                                   |
-|----------|--------------------------|---------------------------------------------------------------|
-| -a       | `python3 src/main.py -a` | Skips HTML audit on all assets.                               |
-| -c       | `python3 src/main.py -c` | Uses color for printing information to the terminal.          |
-| -f       | `python3 src/main.py -f` | Copy & rebuild all files instead of those that are unchanged. |
-| -v       | `python3 src/main.py -v` | Prints additional debug info to the terminal.                 |
-| -x       | `python3 src/main.py -x` | Skips minification for all assets.                            |
+| Argument | Usage                                        | Description                                                    |
+|----------|----------------------------------------------|----------------------------------------------------------------|
+| -a       | `python3 src/main.py -a`                     | Skips HTML audit on all assets.                                |
+| -c       | `python3 src/main.py -c`                     | Uses color for printing information to the terminal.           |
+| -f       | `python3 src/main.py -f`                     | Copy & rebuild all files instead of those that are unchanged.  |
+| -v       | `python3 src/main.py -v`                     | Prints additional debug info to the terminal.                  |
+| -x       | `python3 src/main.py -x`                     | Skips minification for all assets.                             |
+| --config | `python3 src/main.py --config /foo/bar.json` | Loads the config file at /foo/bar.json instead of config.json. |
 
 Note: to use multiple arguments, combine them (ex: `-vcf` will print verbose logs with colored output and force-rebuilds all assets)
 

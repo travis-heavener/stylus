@@ -7,12 +7,13 @@ Date: April 23, 2026
 
 """
 
+import json
 from pathlib import Path
 from time import time
 import traceback
 
 from auditor import audit_html
-from config import config
+from config import get_config, load_config
 from injector import inject_html
 from logger import *
 from tools import *
@@ -21,9 +22,16 @@ if __name__ == "__main__":
     # Debug profiling
     start = time()
 
-    # Verify config file was loaded
-    if config is None:
-        err("Failed to load config.json")
+    # Update CWD to project root
+    os.chdir( Path(__file__).resolve().parent.parent )
+
+    # Load config
+    try:
+        load_config()
+        config = get_config()
+    except json.decoder.JSONDecodeError as e:
+        err(f"Failed to load config file\nJSONDecodeError: {e}")
+        exit(1)
 
     try:
         # 1. Copy source

@@ -1,10 +1,11 @@
 import re
 
-from config import *
+from config import get_config
 from logger import *
 
 # Audits HTML files for accessibility & W3 guidelines/recommendations
 def audit_html(html_files: tuple[str]) -> None:
+    config = get_config()
     is_passing = True
 
     def fail_with_msg(*args) -> None:

@@ -2,12 +2,14 @@ from datetime import datetime
 from pathlib import Path
 import re
 
-from config import config
+from config import get_config
 from logger import *
 from tools import vlog
 
 # Injects HTML into the pseudo-element components
 def inject_html(updated_files: tuple[str]) -> None:
+    config = get_config()
+
     # Read all components
     components = {
         str(p).removeprefix(config.components_dir).removeprefix("/").replace("/", ".").removesuffix(".html")
