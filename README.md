@@ -45,10 +45,10 @@ Consider the directory structure below:
 | /components/Footer.html              | Reusable footer                     |
 | /components/Buttons/BookConsult.html | Reusable consultation button        |
 
-Using `<$ Header >` in your HTML will replace itself with the contents of /components/Header.html completely, while matching surrounding indent.
+Using `<$ Header />` in your HTML will replace itself with the contents of /components/Header.html completely, while matching surrounding indent.
 The same goes for /components/Footer.html.
 
-For components in subdirectories, use the notation `<$ Buttons.BookConsult >` for /components/Buttons/BookConsult.html.
+For components in subdirectories, use the notation `<$ Buttons.BookConsult />` for /components/Buttons/BookConsult.html.
 
 Valid file extensions for components are `.html` and `.htm`.
 
@@ -62,11 +62,35 @@ The datetime pseudo-component resolves a datetime string using [strftime format 
 
 Example:
 ```html
-<p>&copy; <$ Datetime:"%b. %Y" ></p>
+<p>&copy; <$ Datetime:"%b. %Y" /></p>
 ```
 
 becomes
 
 ```
 © Apr. 2026
+```
+
+### TextFile
+
+The text file pseudo-component replaces itself with the contents of a text file.
+Relative file paths are resolved in relation to the config.json `textFilesDir` directory of this project.
+
+One useful case for text file pseudo-components is for placing text directly into HTML elements in HTML files.
+It may be useful to place some HTML into these text files (e.g. `<br>` line breaks), however it is not required.
+
+Additionally, unlike regular components, text file contents are pasted directly into the source file without honoring
+indentation.
+
+Example:
+```html
+<p>
+    <$ TextFile:"~/25-words-of-lorem-ipsum.txt" />
+</p>
+```
+
+may become
+
+```
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque imperdiet nulla sed auctor ultricies. Vivamus consectetur dignissim nisi, nec molestie arcu ornare a. Sed vitae.
 ```

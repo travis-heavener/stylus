@@ -22,6 +22,13 @@ Defines the directory containing reusable components used during compilation.
 
 It is recommended to place this outside of `inputDir` to prevent component files from appearing in the final build output.
 
+### textFilesDir: string
+
+Defines the reference directory containing files for TextFile pseudo-components.
+While you are able to use absolute paths, you may use relative paths which resolve to this directory instead.
+
+It is recommended to place this outside of `inputDir` to prevent extra text files from appearing in the final build output.
+
 ### buildExtensions: array[string]
 
 Specifies a list of file extensions to run through the compiler and HTML auditor.

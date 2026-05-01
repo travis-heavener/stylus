@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from pathlib import Path
 import re
 
@@ -56,11 +57,27 @@ def inject_html(updated_build_files: tuple[str]) -> None:
 
 # Injects pseudo-components into the HTML
 __datetime_pattern = re.compile(r'<\$\s*Datetime\s*:\s*"([^"]+)"\s*/>')
+__textfile_pattern = re.compile(r'<\$\s*TextFile\s*:\s*"([^"]+)"\s*/>')
 def inject_pseudo_components(body: str) -> str:
+    config = get_config()
+
     # Datetime pseudos
     body = __datetime_pattern.sub(
         lambda m: datetime.now().strftime(m.group(1)),
         body
     )
+
+    # TextFile pseudos
+    try:
+        def read_text(path: str) -> str:
+            with open(os.path.join(config.text_files_dir, path), "r") as f:
+                return f.read()
+
+        body = __textfile_pattern.sub(
+            lambda f: read_text(f.group(1)),
+            body
+        )
+    except FileNotFoundError as e:
+        err(f"Failed to resolve TextFile pseudo-component\nFileNotFoundError: {e}")
 
     return body

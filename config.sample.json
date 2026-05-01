@@ -2,6 +2,7 @@
     "inputDir": "example-src",
     "outputDir": "example-public",
     "componentsDir": "example-components",
+    "textFilesDir": "example-text",
 
     "buildExtensions": [ ".html", ".htm" ],
     "sitemapExtensions": [ ".html", ".htm", ".php" ],

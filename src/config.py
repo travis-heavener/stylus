@@ -46,6 +46,7 @@ class _Config:
             self.input_dir = _validate_path( data, "inputDir" )
             self.output_dir = _validate_path( data, "outputDir", make_if_missing=True )
             self.components_dir = _validate_path( data, "componentsDir" )
+            self.text_files_dir = _validate_path( data, "textFilesDir" )
 
             self.build_file_exts = tuple(data["buildExtensions"])
             self.sitemap_file_exts = tuple(data["sitemapExtensions"])
