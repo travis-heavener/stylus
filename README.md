@@ -50,6 +50,8 @@ The same goes for /components/Footer.html.
 
 For components in subdirectories, use the notation `<$ Buttons.BookConsult >` for /components/Buttons/BookConsult.html.
 
+Valid file extensions for components are `.html` and `.htm`.
+
 ## Pseudo-Components
 
 Pseudo-components are dynamic components that resolve to raw text as opposed to a specific HTML component.

@@ -7,12 +7,13 @@ from logger import *
 from tools import vlog
 
 # Injects HTML into the pseudo-element components
-def inject_html(updated_files: tuple[str]) -> None:
+def inject_html(updated_build_files: tuple[str]) -> None:
     config = get_config()
 
     # Read all components
     components = {
-        str(p).removeprefix(config.components_dir).removeprefix("/").replace("/", ".").removesuffix(".html")
+        str(p).removeprefix(config.components_dir).removeprefix("/").replace("/", ".") \
+            .removesuffix(".html").removesuffix(".htm")
         : p.read_text()
         for p in Path(config.components_dir).rglob("*")
         if p.is_file()
@@ -34,10 +35,9 @@ def inject_html(updated_files: tuple[str]) -> None:
         indent = m.group(1).replace("\n", "") # Fix indents
         return indent + components[ m.group(2).strip() ].replace("\n", f"\n{indent}")
 
-    # Find each HTML file in the subtree
-    html_files = tuple( [Path(f) for f in updated_files if f.endswith(".html")] )
-
-    for file in html_files:
+    # Find each build file in the subtree
+    for file_name in updated_build_files:
+        file = Path(file_name)
         # Replace all pseudo-elements with their HTML components
         try:
             body = components_pattern.sub( comp, file.read_text() )

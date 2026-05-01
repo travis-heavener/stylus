@@ -47,6 +47,10 @@ class _Config:
             self.output_dir = _validate_path( data, "outputDir", make_if_missing=True )
             self.components_dir = _validate_path( data, "componentsDir" )
 
+            self.build_file_exts = tuple(data["buildExtensions"])
+            self.sitemap_file_exts = tuple(data["sitemapExtensions"])
+            self.index_files = tuple(data["indexFiles"])
+
             # Parse base address
             self.base_address = data["baseAddress"]
             if not self.base_address.endswith("/"): self.base_address += "/"

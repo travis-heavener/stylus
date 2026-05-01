@@ -54,6 +54,23 @@ class Manifest:
     def get(self, path: str) -> float:
         return self.data["paths"].get(path, -1)
 
+    # Prunes deleted files from the manifest
+    def prune(self, config: Any) -> None:
+        keys = [k for k in self.data["paths"].keys()]
+        for path in keys:
+            # Ignore files only in output dir (e.g. sitemap)
+            if self.data["paths"][path] == -1: continue
+
+            # Resolve to source path
+            src_path = path.replace(config.output_dir, config.input_dir)
+            if not os.path.exists(src_path):
+                del self.data["paths"][path]
+                vlog(f"Pruned {src_path}")
+
+                # Remove from output dir as well
+                if os.path.exists(path):
+                    os.remove(path)
+
     # Writes the manifest to the disk
     def export(self) -> None:
         try:

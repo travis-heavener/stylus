@@ -24,7 +24,14 @@ def audit_html(html_files: tuple[str]) -> None:
             fail_with_msg("Missing meta charset=\"UTF-8\"")
 
         # Verify canonical tag
-        short_path = file.removeprefix(config.output_dir).removesuffix("index.html")
+        short_path = file.removeprefix(config.output_dir)
+
+        # Remove index file suffixes
+        for suffix in config.index_files:
+            if short_path.endswith(suffix):
+                short_path = short_path.removesuffix(suffix)
+                break
+
         if short_path not in config.canonical_ignore:
             canonical = config.base_address + short_path.removeprefix("/")
             canonical_pat_a = rf"""rel=['"]canonical['"].*?\bhref=['"]{canonical}['"]"""

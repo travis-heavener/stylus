@@ -36,17 +36,19 @@ if __name__ == "__main__":
     try:
         # 1. Copy source
         updated_files = copy_source()
+        files = [str(p) for p in Path(config.output_dir).rglob("*")]
 
         # 2. Build site from HTML skeleton
-        inject_html(updated_files)
+        updated_build_files = tuple([f for f in updated_files if f.endswith(config.build_file_exts)])
+        inject_html(updated_build_files)
 
         # 3. Build sitemap.xml
-        html_files = tuple( [str(p) for p in Path(config.output_dir).rglob("*.html")] )
-        build_sitemap(html_files)
+        sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
+        build_sitemap(sitemap_files)
 
-        # 4. Run accessibility audit
+        # 4. Run accessibility audit on newly generated files
         if not isarg("a"):
-            audit_html(html_files)
+            audit_html(updated_build_files)
         else:
             warn("Skipping HTML audit")
 
@@ -56,7 +58,8 @@ if __name__ == "__main__":
         else:
             warn("Skipping minification")
 
-        # Save manifest
+        # Prune & save manifest
+        config.manifest.prune(config)
         config.manifest.export()
 
         # Log success

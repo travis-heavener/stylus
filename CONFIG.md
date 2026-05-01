@@ -22,6 +22,38 @@ Defines the directory containing reusable components used during compilation.
 
 It is recommended to place this outside of `inputDir` to prevent component files from appearing in the final build output.
 
+### buildExtensions: array[string]
+
+Specifies a list of file extensions to run through the compiler and HTML auditor.
+
+Example:
+
+```json
+"buildExtensions": [".html", ".htm"]
+```
+
+### sitemapExtensions: array[string]
+
+Specifies a list of file extensions to run through the sitemap generator.
+
+Example:
+
+```json
+"sitemapExtensions": [".html", ".htm"]
+```
+
+### indexFiles: array[string]
+
+Specifies a list of special file paths to treat as index files (e.g. "index.html", "index.php").
+
+This only applies to the sitemap generator and canonical URL validation.
+
+Example:
+
+```json
+"indexFiles": ["index.html", "index.htm", "index.php"]
+```
+
 ### generateSitemap: boolean
 
 Controls whether a `/sitemap.xml` file is generated in the root of outputDir.

@@ -12,7 +12,8 @@ _latest_component_mtime = -1
 
 # Copies a file if it's newer than what's in the dest directory
 def copy_if_newer(src: str, dest: str) -> str:
-    manifest = get_config().manifest
+    config = get_config()
+    manifest = config.manifest
 
     # Get mtime from manifest
     src_mtime = Path(src).stat().st_mtime
@@ -24,7 +25,7 @@ def copy_if_newer(src: str, dest: str) -> str:
         dest_mtime = Path(dest).stat().st_mtime
 
         # Check if this is an HTML file and the ssg-components directory has new content
-        is_html_with_old_comps = dest.endswith(".html") and _latest_component_mtime > dest_mtime
+        is_html_with_old_comps = dest.endswith(config.build_file_exts) and _latest_component_mtime > dest_mtime
 
         # Compare mod timestamps
         if manifest_mtime >= src_mtime and not is_html_with_old_comps:
@@ -106,7 +107,10 @@ def build_sitemap(files: tuple[str]) -> None:
 
             # Remove index.html if needed
             if config.truncate_sitemap_index_files:
-                pretty_path = pretty_path.removesuffix("index.html")
+                for suffix in config.index_files:
+                    if pretty_path.endswith(suffix):
+                        pretty_path = pretty_path.removesuffix(suffix)
+                        break
 
             # Calculate index priority
             priority = max(0.2, 1.2 - 0.2 * pretty_path.count("/"))
@@ -176,9 +180,10 @@ def minify() -> None:
     config = get_config()
 
     # Get files
-    html_files = tuple( [p for p in Path(config.output_dir).rglob("*.html")] )
-    css_files = tuple( [p for p in Path(config.output_dir).rglob("*.css")] )
-    js_files = tuple( [p for p in Path(config.output_dir).rglob("*.js")] )
+    files = tuple( [p for p in Path(config.output_dir).rglob("*")] )
+    html_files = tuple( [p for p in files if p.suffix in (".html", ".htm")] )
+    css_files = tuple( [p for p in files if p.suffix == ".css"] )
+    js_files = tuple( [p for p in files if p.suffix == ".js"] )
 
     # HTML files
     for file in html_files:

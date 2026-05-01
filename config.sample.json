@@ -3,6 +3,10 @@
     "outputDir": "example-public",
     "componentsDir": "example-components",
 
+    "buildExtensions": [ ".html", ".htm" ],
+    "sitemapExtensions": [ ".html", ".htm", ".php" ],
+    "indexFiles": [ "index.html", "index.htm", "index.php" ],
+
     "generateSitemap": true,
     "truncateSitemapIndexFiles": true,
     "sitemapIgnore": [],
