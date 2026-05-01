@@ -59,7 +59,7 @@ Pseudo-components are dynamic components that resolve to raw text as opposed to 
 The datetime pseudo-component resolves a datetime string using [strftime format codes](https://strftime.org/).
 
 Example:
-```
+```html
 <p>&copy; <$ Datetime:"%b. %Y" ></p>
 ```
 

@@ -43,7 +43,7 @@ Only applies when `generateSitemap` is enabled.
 
 Example:
 
-```
+```json
 "sitemapIgnore": ["/404.html", "/dashboard/index.html"]
 ```
 
@@ -55,7 +55,7 @@ Specifies the base URL (FQDN) used for:
 
 Example:
 
-```
+```json
 "baseAddress": "http://localhost/"
 ```
 
@@ -67,7 +67,7 @@ Useful for pages that should not appear in search results (e.g., error pages or 
 
 Example:
 
-```
+```json
 "canonicalIgnore": ["/404.html", "/dashboard/index.html"]
 ```
 
