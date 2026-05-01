@@ -4,6 +4,7 @@ import os
 import sys
 
 from logger import *
+from manifest import Manifest
 
 # Helper to validate arguments
 def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
@@ -64,6 +65,9 @@ class _Config:
         except:
             err(f"Failed to parse config file")
             sys.exit(1)
+
+        # Load manifest
+        self.manifest = Manifest()
 
 # Gets the config path, either default or from argv
 def _get_config_path():

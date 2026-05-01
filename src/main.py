@@ -56,6 +56,9 @@ if __name__ == "__main__":
         else:
             warn("Skipping minification")
 
+        # Save manifest
+        config.manifest.export()
+
         # Log success
         log(f"Build success ({round(time() - start)}s).")
     except Exception as e:

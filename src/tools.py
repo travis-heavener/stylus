@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import os
-import pathlib
+from pathlib import Path
 import re
 import shutil
 
@@ -8,67 +8,76 @@ from config import get_config
 from logger import *
 
 # File copy helpers
-_latest_ssg_comp_mtime = -1
-_files_copied = []
-
-# Copies a file & records its path
-def copy(src: str, dest: str) -> str:
-    _files_copied.append(dest)
-    return shutil.copy2(src, dest)
+_latest_component_mtime = -1
 
 # Copies a file if it's newer than what's in the dest directory
 def copy_if_newer(src: str, dest: str) -> str:
-    if os.path.exists(dest):
-        src_mtime = os.path.getmtime(src)
-        dest_mtime = os.path.getmtime(dest)
+    manifest = get_config().manifest
+
+    # Get mtime from manifest
+    src_mtime = Path(src).stat().st_mtime
+    manifest_mtime = manifest.get(dest)
+
+    # Check if dest file already exists and is in the manifest
+    if os.path.exists(dest) and manifest_mtime > 0:
+        # Get existing file mtime
+        dest_mtime = Path(dest).stat().st_mtime
 
         # Check if this is an HTML file and the ssg-components directory has new content
-        is_html_with_old_comps = dest.endswith(".html") and _latest_ssg_comp_mtime > dest_mtime
+        is_html_with_old_comps = dest.endswith(".html") and _latest_component_mtime > dest_mtime
 
         # Compare mod timestamps
-        if dest_mtime >= src_mtime and not is_html_with_old_comps:
+        if manifest_mtime >= src_mtime and not is_html_with_old_comps:
             return dest
-        else:
-            vlog(f"Copied {src} --> {dest}")
 
     # Base case, copy as usual
-    _files_copied.append(dest)
+    manifest.put(os.path.abspath(dest), src_mtime)
+    vlog(f"Copied {src} --> {dest}")
     return shutil.copy2(src, dest)
 
 # Used to copy the new source
 def copy_source() -> tuple[str]:
     config = get_config()
+    manifest = config.manifest
 
+    # Copy helper
+    def copy(src: str, dest: str) -> str:
+        manifest.put(os.path.abspath(dest), Path(src).stat().st_mtime)
+        return shutil.copy2(src, dest)
+
+    # Verify output directory exists
     if os.path.exists(config.output_dir):
-        # Handle copies
-        if isarg("f"):
-            # Purge all
+        # If build path changed (or force rebuild flag), purge all & rebuild
+        if isarg("f") or os.path.abspath(config.output_dir) != os.path.abspath(manifest.get_build_path()):
+            # Purge all, create new manifest
             shutil.rmtree(config.output_dir)
+            manifest.clear()
+            manifest.set_build_path(config.output_dir)
 
             # Copy new
             shutil.copytree(config.input_dir, config.output_dir, copy_function=copy)
             log("Cleaned existing build content.")
-        else:
+        else: # Build path matches manifest & not a force rebuild
             # Determine mtime of newest ssg component
-            global _latest_ssg_comp_mtime
-            _latest_ssg_comp_mtime = max(
-                os.path.getmtime(str(p.resolve())) for p in pathlib.Path(config.components_dir).rglob("*")
-            )
+            global _latest_component_mtime
+            _latest_component_mtime = max( p.stat().st_mtime for p in Path(config.components_dir).rglob("*") )
 
             # Copy only updated
             shutil.copytree(config.input_dir, config.output_dir, copy_function=copy_if_newer, dirs_exist_ok=True)
 
-            if len(_files_copied) > 0:
+            if len(manifest.files_updated) > 0:
                 log("Updated modified build content.")
             else:
                 log("Already up-to-date (-f to force rebuild).")
                 exit(0)
-    else:
-        # Initial copy
+    else: # Output directory doesn't exist, create new manifest
+        # Fresh copy
+        manifest.clear()
+        manifest.set_build_path(config.output_dir)
         shutil.copytree(config.input_dir, config.output_dir, copy_function=copy)
-    
+
     # Return updated files
-    return tuple(_files_copied)
+    return tuple(manifest.files_updated)
 
 # Creates public/sitemap.xml with update timestamps for all HTML files
 def build_sitemap(files: tuple[str]) -> None:
@@ -76,6 +85,9 @@ def build_sitemap(files: tuple[str]) -> None:
 
     # Overwrite any existing sitemap
     sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
+
+    # Add stub to manifest
+    config.manifest.put(os.path.abspath(sitemap_path), -1)
 
     with open(sitemap_path, "w") as f:
         # Append header
@@ -164,9 +176,9 @@ def minify() -> None:
     config = get_config()
 
     # Get files
-    html_files = tuple( [p for p in pathlib.Path(config.output_dir).rglob("*.html")] )
-    css_files = tuple( [p for p in pathlib.Path(config.output_dir).rglob("*.css")] )
-    js_files = tuple( [p for p in pathlib.Path(config.output_dir).rglob("*.js")] )
+    html_files = tuple( [p for p in Path(config.output_dir).rglob("*.html")] )
+    css_files = tuple( [p for p in Path(config.output_dir).rglob("*.css")] )
+    js_files = tuple( [p for p in Path(config.output_dir).rglob("*.js")] )
 
     # HTML files
     for file in html_files:
