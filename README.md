@@ -5,6 +5,11 @@
 
 Stylus is a simple static site generator (SSG) that builds with no additional markup bloat.
 
+A few features & quick facts about Stylus:
+- Designed for static HTML websites
+- Includes a minimal HTML tag checker/auditor
+    - Verifies attributes like the HTML `lang` attribute and meta `viewport` tag
+
 ## Getting Started
 
 Copy the sample configuration file (config.sample.json) to config.json in the root directory of this repository.
