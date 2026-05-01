@@ -59,5 +59,5 @@ if __name__ == "__main__":
         # Log success
         log(f"Build success ({round(time() - start)}s).")
     except Exception as e:
-        log(f"Build failed ({round(time() - start)}s):")
+        err(f"Build failed ({round(time() - start)}s):")
         traceback.print_exc()
