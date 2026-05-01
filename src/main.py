@@ -26,6 +26,9 @@ if __name__ == "__main__":
     try:
         load_config()
         config = get_config()
+    except FileNotFoundError as e:
+        err(f"Failed to load config file\nFileNotFoundError: {e}")
+        exit(1)
     except json.decoder.JSONDecodeError as e:
         err(f"Failed to load config file\nJSONDecodeError: {e}")
         exit(1)
