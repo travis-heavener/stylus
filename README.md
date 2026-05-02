@@ -94,3 +94,28 @@ may become
 ```
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque imperdiet nulla sed auctor ultricies. Vivamus consectetur dignissim nisi, nec molestie arcu ornare a. Sed vitae.
 ```
+
+## Pseudo-Attributes
+
+### Cache Bust
+
+The Cache Bust pseudo-attribute wraps standard HTML attributes such as `href` and `src`, then appends a unique query string to the attribute value.
+
+The generated query value is based on the last-modified timestamp, in milliseconds, of the corresponding resource file from the input path.
+
+This is useful for cache busting, allowing browsers to load updated versions of assets when the underlying files change.
+
+Example:
+```html
+<!-- Final global assets -->
+<link rel="stylesheet" $stylus-cache-bust-href="/css/globals.css">
+<script $stylus-cache-bust-src="/js/globals.js" defer></script>
+```
+
+may become
+
+```html
+<!-- Final global assets -->
+<link rel="stylesheet" href="/css/globals.css?_m=1777746771543">
+<script src="/js/globals.js?_m=1777746774622" defer></script>
+```

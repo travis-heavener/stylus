@@ -23,7 +23,7 @@ def inject_html(updated_build_files: tuple[str]) -> None:
     # Replace pseudo-components in components
     for key in components.keys():
         # Inject pseudo-components AFTER components
-        components[key] = inject_pseudo_components(components[key])
+        components[key] = inject_pseudos(components[key])
 
     # Precompile pattern
     components_pattern = re.compile(
@@ -52,7 +52,7 @@ def inject_html(updated_build_files: tuple[str]) -> None:
             exit(1)
 
         # Inject pseudo-components that may be hiding in html file
-        body = inject_pseudo_components(body)
+        body = inject_pseudos(body)
 
         # Write back to file
         file.write_text(body)
@@ -63,7 +63,8 @@ def inject_html(updated_build_files: tuple[str]) -> None:
 # Injects pseudo-components into the HTML
 __datetime_pattern = re.compile(r'<\$\s*Datetime\s*:\s*"([^"]+)"\s*/>')
 __textfile_pattern = re.compile(r'<\$\s*TextFile\s*:\s*"([^"]+)"\s*/>')
-def inject_pseudo_components(body: str) -> str:
+__cachebust_attr_pattern = re.compile( r"""\$stylus-cache-bust-([A-Za-z_:][\w:.-]*)\s*=\s*(["'])((?:\\.|(?!\2).)*)\2""" )
+def inject_pseudos(body: str) -> str:
     config = get_config()
 
     # Datetime pseudos
@@ -84,5 +85,18 @@ def inject_pseudo_components(body: str) -> str:
         )
     except FileNotFoundError as e:
         err(f"Failed to resolve TextFile pseudo-component\nFileNotFoundError: {e}")
+
+    # Cache bust pseudo-attributes
+    try:
+        def replace_cache_bust(match: re.Match) -> str:
+            # Extract parts
+            attr, quote, path = match.groups()
+            mod = int(Path( os.path.join(config.input_dir, path.removeprefix("/")) ).stat().st_mtime * 1000)
+            print(attr, quote, path)
+            return f"{attr}={quote}{path}?_m={mod}{quote}"
+
+        body = __cachebust_attr_pattern.sub( replace_cache_bust, body )
+    except FileNotFoundError as e:
+        err(f"Failed to resolve Cache Bust pseudo-attribute\nFileNotFoundError: {e}")
 
     return body
