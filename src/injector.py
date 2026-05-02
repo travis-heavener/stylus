@@ -92,7 +92,6 @@ def inject_pseudos(body: str) -> str:
             # Extract parts
             attr, quote, path = match.groups()
             mod = int(Path( os.path.join(config.input_dir, path.removeprefix("/")) ).stat().st_mtime * 1000)
-            print(attr, quote, path)
             return f"{attr}={quote}{path}?_m={mod}{quote}"
 
         body = __cachebust_attr_pattern.sub( replace_cache_bust, body )
