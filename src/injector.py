@@ -27,14 +27,19 @@ def inject_html(updated_build_files: tuple[str]) -> None:
 
     # Precompile pattern
     components_pattern = re.compile(
-        rf"^(\s*)<\$\s*({ '|'.join([k for k in components.keys()]) })\s*\/\s*>",
+        rf"(.*?)<\$\s*({ '|'.join(map(re.escape, components.keys())) })\s*\/\s*>",
         flags=re.MULTILINE
     )
 
     # Shorthand to Regex replace elements
     def comp(m: re.Match) -> str:
-        indent = m.group(1).replace("\n", "") # Fix indents
-        return indent + components[ m.group(2).strip() ].replace("\n", f"\n{indent}")
+        # Fix indents
+        if str.isspace(m.group(1)):
+            indent = m.group(1).replace("\n", "")
+            return indent + components[ m.group(2).strip() ].replace("\n", f"\n{indent}")
+        else:
+            # No indents
+            return m.group(1) + components[ m.group(2).strip() ]
 
     # Find each build file in the subtree
     for file_name in updated_build_files:
