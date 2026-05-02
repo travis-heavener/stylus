@@ -23,7 +23,7 @@ def inject_html(updated_build_files: tuple[str]) -> None:
     # Replace pseudo-components in components
     for key in components.keys():
         # Inject pseudo-components AFTER components
-        components[key] = inject_pseudos(components[key])
+        components[key] = inject_pseudos(None, components[key])
 
     # Precompile pattern
     components_pattern = re.compile(
@@ -52,7 +52,7 @@ def inject_html(updated_build_files: tuple[str]) -> None:
             exit(1)
 
         # Inject pseudo-components that may be hiding in html file
-        body = inject_pseudos(body)
+        body = inject_pseudos(str(file), body)
 
         # Write back to file
         file.write_text(body)
@@ -64,7 +64,7 @@ def inject_html(updated_build_files: tuple[str]) -> None:
 __datetime_pattern = re.compile(r'<\$\s*Datetime\s*:\s*"([^"]+)"\s*/>')
 __textfile_pattern = re.compile(r'<\$\s*TextFile\s*:\s*"([^"]+)"\s*/>')
 __cachebust_attr_pattern = re.compile( r"""\$stylus-cache-bust-([A-Za-z_:][\w:.-]*)\s*=\s*(["'])((?:\\.|(?!\2).)*)\2""" )
-def inject_pseudos(body: str) -> str:
+def inject_pseudos(current_path: str | None, body: str) -> str:
     config = get_config()
 
     # Datetime pseudos
@@ -88,13 +88,29 @@ def inject_pseudos(body: str) -> str:
 
     # Cache bust pseudo-attributes
     try:
+        input_dir = Path(config.input_dir).resolve()
+        output_dir = Path(config.output_dir).resolve()
+
+        def resolve_cache_bust_path(match: re.Match, attr_path: str) -> Path:
+            # Web-root relative paths
+            if attr_path.startswith("/"): return input_dir / attr_path.removeprefix("/")
+
+            # Paths relative to current_path
+            if current_path is None: raise ValueError(match.group())
+
+            current_file = Path(current_path).resolve()
+            current_rel_parent = current_file.parent.relative_to(output_dir)
+            source_parent = input_dir / current_rel_parent
+            return (source_parent / attr_path).resolve()
+
         def replace_cache_bust(match: re.Match) -> str:
-            # Extract parts
             attr, quote, path = match.groups()
-            mod = int(Path( os.path.join(config.input_dir, path.removeprefix("/")) ).stat().st_mtime * 1000)
+            mod = int( resolve_cache_bust_path(match, path).stat().st_mtime * 1000 )
             return f"{attr}={quote}{path}?_m={mod}{quote}"
 
-        body = __cachebust_attr_pattern.sub( replace_cache_bust, body )
+        body = __cachebust_attr_pattern.sub(replace_cache_bust, body)
+    except ValueError as e:
+        err(f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\nUse absolute paths for cache busting in components.\nContext:\n  {e}")
     except FileNotFoundError as e:
         err(f"Failed to resolve Cache Bust pseudo-attribute\nFileNotFoundError: {e}")
 
