@@ -93,8 +93,8 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
 
         def resolve_cache_bust_path(match: re.Match, attr_path: str) -> Path:
             # Strip hash & query string
-            if "#" in attr_path: attr_path = attr_path[ :attr_path.index("#") ]
             if "?" in attr_path: attr_path = attr_path[ :attr_path.index("?") ]
+            if "#" in attr_path: attr_path = attr_path[ :attr_path.index("#") ]
 
             # Web-root relative paths
             if attr_path.startswith("/"): return input_dir / attr_path.removeprefix("/")
@@ -112,11 +112,22 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
             attr, quote, path = match.groups()
             mod = int( resolve_cache_bust_path(match, path).stat().st_mtime * 1000 )
 
-            # Set or update query string
-            if "?" in path:
-                return f"{attr}={quote}{path}&_m={mod}{quote}"
+            # Isolate URL hash, if exists
+            if "#" in path:
+                base_path, hash_part = path.split("#", 1)
+                hash_part = f"#{hash_part}"
             else:
-                return f"{attr}={quote}{path}?_m={mod}{quote}"
+                base_path = path
+                hash_part = ""
+
+            # Check & append cache-bust param
+            if "?" in base_path:
+                updated_base = f"{base_path}&_m={mod}"
+            else:
+                updated_base = f"{base_path}?_m={mod}"
+
+            # Rebuild path w/ new query string & hash
+            return f"{attr}={quote}{updated_base}{hash_part}{quote}"
 
         body = __cachebust_attr_pattern.sub(replace_cache_bust, body)
     # except ValueError as e:
