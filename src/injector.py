@@ -111,7 +111,12 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
         def replace_cache_bust(match: re.Match) -> str:
             attr, quote, path = match.groups()
             mod = int( resolve_cache_bust_path(match, path).stat().st_mtime * 1000 )
-            return f"{attr}={quote}{path}?_m={mod}{quote}"
+
+            # Set or update query string
+            if "?" in path:
+                return f"{attr}={quote}{path}&_m={mod}{quote}"
+            else:
+                return f"{attr}={quote}{path}?_m={mod}{quote}"
 
         body = __cachebust_attr_pattern.sub(replace_cache_bust, body)
     # except ValueError as e:
