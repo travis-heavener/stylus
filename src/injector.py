@@ -92,10 +92,15 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
         output_dir = Path(config.output_dir).resolve()
 
         def resolve_cache_bust_path(match: re.Match, attr_path: str) -> Path:
+            # Strip hash & query string
+            if "#" in attr_path: attr_path = attr_path[ :attr_path.index("#") ]
+            if "?" in attr_path: attr_path = attr_path[ :attr_path.index("?") ]
+
             # Web-root relative paths
             if attr_path.startswith("/"): return input_dir / attr_path.removeprefix("/")
 
             # Paths relative to current_path
+            nonlocal current_path
             if current_path is None: raise ValueError(match.group())
 
             current_file = Path(current_path).resolve()
@@ -109,8 +114,8 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
             return f"{attr}={quote}{path}?_m={mod}{quote}"
 
         body = __cachebust_attr_pattern.sub(replace_cache_bust, body)
-    except ValueError as e:
-        err(f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\nUse absolute paths for cache busting in components.\nContext:\n  {e}")
+    # except ValueError as e:
+    #     err(f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\nUse absolute paths for cache busting in components.\nContext:\n  {e}")
     except FileNotFoundError as e:
         err(f"Failed to resolve Cache Bust pseudo-attribute\nFileNotFoundError: {e}")
 
