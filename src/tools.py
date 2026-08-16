@@ -161,17 +161,42 @@ def minify_css(text: str) -> str:
 
     return text.strip()
 
-# Simple JS minifier
 def minify_js(text: str) -> str:
-    # Remove comments
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-    text = re.sub(r"//.*", "", text)
+    # Pattern to match comments and strings
+    pattern = re.compile(
+        r'/\*.*?\*/|'            # Block comments
+        r'//[^\n]*|'             # Line comments
+        r'"(?:\\.|[^"\\])*"|'    # Double-quote strings
+        r"'(?:\\.|[^'\\])*'|"    # Single-quote strings
+        r"`(?:\\.|[^`\\])*`",    # Template literals (backticks)
+        re.DOTALL
+    )
 
+    strings = []
+
+    # Strip comments and temporarily replace strings with placeholders
+    def replacer(match):
+        val = match.group(0)
+        if val.startswith('/*') or val.startswith('//'):
+            return '' # Delete comments
+
+        # Otherwise, it's a string (save & leave placeholder)
+        strings.append(val)
+        return f"__MINIFY_STR_{len(strings)-1}__"
+
+    text = pattern.sub(replacer, text)
+    
     # Remove whitespace around symbols
-    text = re.sub(r"\s*([{};,:=+\-*/()<>])\s*", r"\1", text)
+    text = re.sub(r"\s*([{}();,:=+*/<>!&|?\[\]~%^\-])\s*", r"\1", text)
 
-    # Remove remaining whitespace
+    # Remove remaining consecutive whitespace
     text = re.sub(r"\s+", " ", text)
+
+    # Re-inject original strings back into placeholders
+    for i, s in enumerate(strings):
+        # Use .replace() instead of regex so escape chars inside
+        #   JS strings don't confuse the regex engine
+        text = text.replace(f"__MINIFY_STR_{i}__", s)
 
     return text.strip()
 
