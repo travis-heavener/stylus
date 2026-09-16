@@ -18,7 +18,8 @@ from injector import inject_html
 from logger import *
 from tools import *
 
-if __name__ == "__main__":
+# Returns the exit code
+def main() -> int:
     # Debug profiling
     start = time()
 
@@ -36,6 +37,14 @@ if __name__ == "__main__":
     try:
         # 1. Copy source
         updated_files = copy_source()
+
+        # Handle if already up-to-date
+        if updated_files is None:
+            # Prune & save manifest
+            config.manifest.prune(config)
+            config.manifest.export()
+            return 0
+
         files = [str(p) for p in Path(config.output_dir).rglob("*")]
 
         # 2. Build site from HTML skeleton
@@ -65,6 +74,11 @@ if __name__ == "__main__":
 
         # Log success
         log(f"Build success ({round(time() - start)}s).")
+        return 0
     except Exception as e:
         err(f"Build failed ({round(time() - start)}s):")
         traceback.print_exc()
+        return 1
+
+if __name__ == "__main__":
+    exit( main() )

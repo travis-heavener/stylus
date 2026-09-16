@@ -70,6 +70,10 @@ def copy_source() -> tuple[str]:
                 log("Updated modified build content.")
             else:
                 log("Already up-to-date (-f to force rebuild).")
+
+                # Prune & save manifest
+                config.manifest.prune(config)
+                config.manifest.export()
                 exit(0)
     else: # Output directory doesn't exist, create new manifest
         # Fresh copy
