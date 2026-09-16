@@ -79,3 +79,4 @@ class Manifest:
                 json.dump(self.data, f)
         except Exception as e:
             err(f"Failed to write to {_build_manifest_path}\n{e}")
+            exit(1)

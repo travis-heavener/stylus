@@ -85,6 +85,7 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
         )
     except FileNotFoundError as e:
         err(f"Failed to resolve TextFile pseudo-component\nFileNotFoundError: {e}")
+        exit(1)
 
     # Cache bust pseudo-attributes
     try:
@@ -134,5 +135,6 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
     #     err(f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\nUse absolute paths for cache busting in components.\nContext:\n  {e}")
     except FileNotFoundError as e:
         err(f"Failed to resolve Cache Bust pseudo-attribute\nFileNotFoundError: {e}")
+        exit(1)
 
     return body
