@@ -43,8 +43,9 @@ if __name__ == "__main__":
         inject_html(updated_build_files)
 
         # 3. Build sitemap.xml
-        sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
-        build_sitemap(sitemap_files)
+        if config.generate_sitemap:
+            sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
+            build_sitemap(sitemap_files)
 
         # 4. Run accessibility audit on newly generated files
         if not isarg("a"):
