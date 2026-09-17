@@ -82,7 +82,11 @@ def main() -> int:
         # 6. Build sitemap.xml
         sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
         if config.generate_sitemap:
-            sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
+            files = [str(p) for p in Path(config.output_dir).rglob("*")]
+            sitemap_files = tuple(
+                f for f in files
+                if f.endswith(config.sitemap_file_exts)
+            )
             build_sitemap(sitemap_path, sitemap_files)
         elif os.path.exists( sitemap_path ):
             os.remove( sitemap_path )
