@@ -37,7 +37,7 @@ def copy_if_newer(src: str, dest: str) -> str:
     return shutil.copy2(src, dest)
 
 # Used to copy the new source
-def copy_source() -> tuple[str]:
+def copy_source() -> tuple[str] | None:
     config = get_config()
     manifest = config.manifest
 
@@ -71,10 +71,8 @@ def copy_source() -> tuple[str]:
             else:
                 log("Already up-to-date (-f to force rebuild).")
 
-                # Prune & save manifest
-                config.manifest.prune(config)
-                config.manifest.export()
-                exit(0)
+                # Mark as unchanged
+                return None
     else: # Output directory doesn't exist, create new manifest
         # Fresh copy
         manifest.clear()
@@ -85,11 +83,8 @@ def copy_source() -> tuple[str]:
     return tuple(manifest.files_updated)
 
 # Creates public/sitemap.xml with update timestamps for all HTML files
-def build_sitemap(files: tuple[str]) -> None:
+def build_sitemap(sitemap_path: str, files: tuple[str]) -> None:
     config = get_config()
-
-    # Overwrite any existing sitemap
-    sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
 
     # Add stub to manifest
     config.manifest.put(os.path.abspath(sitemap_path), -1)

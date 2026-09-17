@@ -8,6 +8,7 @@ Date: April 23, 2026
 """
 
 import json
+import os
 from pathlib import Path
 from time import time
 import traceback
@@ -41,36 +42,50 @@ def main() -> int:
         # Handle if already up-to-date
         if updated_files is None:
             # Prune & save manifest
-            config.manifest.prune(config)
-            config.manifest.export()
+            config.manifest.prune_and_export(config)
+
+            # Build sitemap.xml since deleted files from manifest.prune may persist in sitemap.xml
+            files = [str(p) for p in Path(config.output_dir).rglob("*")]
+            sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
+
+            sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
+            if config.generate_sitemap:
+                sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
+                build_sitemap(sitemap_path, sitemap_files)
+            elif os.path.exists( sitemap_path ):
+                os.remove( sitemap_path )
+
             return 0
 
+        # Otherwise, out-of-date
         files = [str(p) for p in Path(config.output_dir).rglob("*")]
 
         # 2. Build site from HTML skeleton
         updated_build_files = tuple([f for f in updated_files if f.endswith(config.build_file_exts)])
         inject_html(updated_build_files)
 
-        # 3. Build sitemap.xml
-        if config.generate_sitemap:
-            sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
-            build_sitemap(sitemap_files)
-
-        # 4. Run accessibility audit on newly generated files
+        # 3. Run accessibility audit on newly generated files
         if not isarg("a"):
             audit_html(updated_build_files)
         else:
             warn("Skipping HTML audit")
 
-        # 5. Minify assets
+        # 4. Minify assets
         if not isarg("x"):
             minify()
         else:
             warn("Skipping minification")
 
-        # Prune & save manifest
-        config.manifest.prune(config)
-        config.manifest.export()
+        # 5. Prune & save manifest
+        config.manifest.prune_and_export(config)
+
+        # 6. Build sitemap.xml
+        sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
+        if config.generate_sitemap:
+            sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
+            build_sitemap(sitemap_path, sitemap_files)
+        elif os.path.exists( sitemap_path ):
+            os.remove( sitemap_path )
 
         # Log success
         log(f"Build success ({round(time() - start)}s).")

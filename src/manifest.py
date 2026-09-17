@@ -80,3 +80,8 @@ class Manifest:
         except Exception as e:
             err(f"Failed to write to {_build_manifest_path}\n{e}")
             exit(1)
+
+    # Prunes AND exports in one line
+    def prune_and_export(self, config: Any) -> None:
+        self.prune(config)
+        self.export()
