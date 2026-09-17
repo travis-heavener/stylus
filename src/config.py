@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import os
+import shutil
 import sys
 
 from logger import *
@@ -47,6 +48,13 @@ class _Config:
             self.output_dir = _validate_path( data, "outputDir", make_if_missing=True )
             self.components_dir = _validate_path( data, "componentsDir" )
             self.text_files_dir = _validate_path( data, "textFilesDir" )
+
+            # Create buffer staging directory
+            self.backup_dir = Path(__file__).resolve().parent.parent / "staging"
+            if self.backup_dir.exists():
+                shutil.rmtree(self.backup_dir)
+            self.backup_dir.mkdir(parents=True, exist_ok=True)
+            self.backup_dir = os.path.abspath( self.backup_dir )
 
             self.build_file_exts = tuple(data["buildExtensions"])
             self.sitemap_file_exts = tuple(data["sitemapExtensions"])

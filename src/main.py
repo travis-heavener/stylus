@@ -42,7 +42,10 @@ def main() -> int:
         # Handle if already up-to-date
         if updated_files is None:
             # Prune & save manifest
-            config.manifest.prune_and_export(config)
+            if config.manifest.prune_and_export(config) == 1:
+                # Failed
+                restore_output_from_backup()
+                return 1
 
             # Build sitemap.xml since deleted files from manifest.prune may persist in sitemap.xml
             files = [str(p) for p in Path(config.output_dir).rglob("*")]
@@ -77,7 +80,10 @@ def main() -> int:
             warn("Skipping minification")
 
         # 5. Prune & save manifest
-        config.manifest.prune_and_export(config)
+        if config.manifest.prune_and_export(config) == 1:
+            # Failed
+            restore_output_from_backup()
+            return 1
 
         # 6. Build sitemap.xml
         sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )

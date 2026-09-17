@@ -48,6 +48,9 @@ def copy_source() -> tuple[str] | None:
 
     # Verify output directory exists
     if os.path.exists(config.output_dir):
+        # Backup current contents
+        shutil.copytree(config.output_dir, config.backup_dir, dirs_exist_ok=True)
+
         # If build path changed (or force rebuild flag), purge all & rebuild
         if isarg("f") or os.path.abspath(config.output_dir) != os.path.abspath(manifest.get_build_path()):
             # Purge all, create new manifest
@@ -81,6 +84,17 @@ def copy_source() -> tuple[str] | None:
 
     # Return updated files
     return tuple(manifest.files_updated)
+
+# Restores the output directory from backup
+def restore_output_from_backup() -> None:
+    config = get_config()
+
+    # Wipe the existing output directory to ensure clean restore
+    if os.path.exists(config.output_dir):
+        shutil.rmtree(config.output_dir)
+
+    # Restore contents from backup
+    shutil.copytree(config.backup_dir, config.output_dir)
 
 # Creates public/sitemap.xml with update timestamps for all HTML files
 def build_sitemap(sitemap_path: str, files: tuple[str]) -> None:

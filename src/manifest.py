@@ -77,11 +77,12 @@ class Manifest:
             with open( os.path.join(os.getcwd(), _build_manifest_path), "w" ) as f:
                 vlog(f"Updated {_build_manifest_path}")
                 json.dump(self.data, f)
+            return 0
         except Exception as e:
             err(f"Failed to write to {_build_manifest_path}\n{e}")
-            exit(1)
+            return 1
 
-    # Prunes AND exports in one line
-    def prune_and_export(self, config: Any) -> None:
+    # Prunes AND exports in one line, returns 0 on success or 1 on error
+    def prune_and_export(self, config: Any) -> int:
         self.prune(config)
-        self.export()
+        return self.export()
