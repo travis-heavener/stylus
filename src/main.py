@@ -15,6 +15,7 @@ import traceback
 
 from auditor import audit_html
 from config import get_config, load_config
+from exception import StylusException
 from injector import inject_html
 from logger import *
 from tools import *
@@ -102,8 +103,22 @@ def main() -> int:
         return 0
     except Exception as e:
         err(f"Build failed ({round(time() - start)}s):")
-        traceback.print_exc()
+
+        if isinstance(e, StylusException):
+            err(e.msg)
+        else:
+            traceback.print_exc()
+
+        # Restore backup
+        restore_output_from_backup()
         return 1
 
 if __name__ == "__main__":
-    exit( main() )
+    status = main()
+
+    # Remove backup contents
+    config = get_config()
+    backup_dir = Path(config.backup_dir)
+    if backup_dir.exists(): shutil.rmtree(backup_dir)
+
+    exit(status)

@@ -50,7 +50,7 @@ class _Config:
             self.text_files_dir = _validate_path( data, "textFilesDir" )
 
             # Create buffer staging directory
-            self.backup_dir = Path(__file__).resolve().parent.parent / "staging"
+            self.backup_dir = Path(__file__).resolve().parent.parent / "stylus-tmp"
             if self.backup_dir.exists():
                 shutil.rmtree(self.backup_dir)
             self.backup_dir.mkdir(parents=True, exist_ok=True)

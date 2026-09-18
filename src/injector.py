@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 
 from config import get_config
+from exception import StylusException
 from logger import *
 from tools import vlog
 
@@ -48,8 +49,7 @@ def inject_html(updated_build_files: tuple[str]) -> None:
         try:
             body = components_pattern.sub( comp, file.read_text() )
         except KeyError as e:
-            err(f"Invalid component: {e}")
-            exit(1)
+            raise StylusException(f"Invalid component: {e}")
 
         # Inject pseudo-components that may be hiding in html file
         body = inject_pseudos(str(file), body)
@@ -84,8 +84,7 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
             body
         )
     except FileNotFoundError as e:
-        err(f"Failed to resolve TextFile pseudo-component\nFileNotFoundError: {e}")
-        exit(1)
+        raise StylusException(f"Failed to resolve TextFile pseudo-component\nFileNotFoundError: {e}")
 
     # Cache bust pseudo-attributes
     try:
@@ -134,7 +133,6 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
     # except ValueError as e:
     #     err(f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\nUse absolute paths for cache busting in components.\nContext:\n  {e}")
     except FileNotFoundError as e:
-        err(f"Failed to resolve Cache Bust pseudo-attribute\nFileNotFoundError: {e}")
-        exit(1)
+        raise StylusException(f"Failed to resolve Cache Bust pseudo-attribute\nFileNotFoundError: {e}")
 
     return body
