@@ -2,6 +2,8 @@ config.json
 build-manifest.json
 example-public/
 example-public/**
+stylus-tmp/
+stylus-tmp/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

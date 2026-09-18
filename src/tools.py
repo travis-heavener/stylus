@@ -89,6 +89,12 @@ def copy_source() -> tuple[str] | None:
 def restore_output_from_backup() -> None:
     config = get_config()
 
+    # If no backup directory exists, remove output directory
+    if not os.path.exists(config.backup_dir):
+        if os.path.exists(config.output_dir):
+            shutil.rmtree(config.output_dir)
+        return
+
     # Wipe the existing output directory to ensure clean restore
     if os.path.exists(config.output_dir):
         shutil.rmtree(config.output_dir)
