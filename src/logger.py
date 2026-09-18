@@ -1,10 +1,10 @@
-from sys import argv
+import sys
 from typing import Any
 
 # Check if an argument is set
 def isarg(c: str) -> bool:
-    if len(argv) <= 1: return False
-    return argv[1][0] == "-" and c in argv[1]
+    if len(sys.argv) <= 1: return False
+    return sys.argv[1].startswith("-") and c in sys.argv[1]
 
 # Prints all arguments to console with a debug message,
 #   IF the -v flag is set (for verbose logging)
