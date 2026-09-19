@@ -46,11 +46,8 @@ def main() -> int:
 
         # Handle if already up-to-date
         if updated_files is None:
-            # Prune & save manifest
-            if config.manifest.prune_and_export(config) == 1:
-                # Failed
-                restore_output_from_backup()
-                return 1
+            # Prune manifest
+            config.manifest.prune(config)
 
             # Build sitemap.xml since deleted files from manifest.prune may persist in sitemap.xml
             files = [str(p) for p in Path(config.output_dir).rglob("*")]
@@ -62,6 +59,11 @@ def main() -> int:
                 build_sitemap(sitemap_path, sitemap_files)
             elif os.path.exists( sitemap_path ):
                 os.remove( sitemap_path )
+
+            # Export manifest
+            if config.manifest.export() == 1:
+                restore_output_from_backup()
+                return 1
 
             return 0
 
