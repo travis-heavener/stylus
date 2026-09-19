@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 
 from args import get_args
@@ -20,11 +21,11 @@ def warn(*args: list[Any]) -> None:
     if get_args().c: # Colored ANSI output
         print("\033[93m\033[1m[WARN]\033[0m", *args)
     else:
-        print("[WARN]", *args)
+        print("[WARN]", *args, file=sys.stderr)
 
 # Prints all arguments to console with an error message
 def err(*args: list[Any]) -> None:
     if get_args().c: # Colored ANSI output
         print("\033[91m\033[1m[ERROR]\033[0m", *args)
     else:
-        print("[ERROR]", *args)
+        print("[ERROR]", *args, file=sys.stderr)
