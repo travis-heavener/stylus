@@ -26,16 +26,21 @@ def _get_nested_paths(*path_strs: list[str]) -> tuple[bool, tuple[str]]:
     return tuple(invalid_paths)
 
 # Helper to validate arguments
-def _validate_path(root_path: str, data: dict, key: str, make_if_missing: bool=False) -> str:
+def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bool=False) -> str:
     # Check if absolute or relative path exists
     rel_path = os.path.join(root_path, data[key])
     does_abs_exist = os.path.exists(data[key])
     does_rel_exist = os.path.exists(rel_path)
 
-    if does_abs_exist: return os.path.abspath(data[key])
-    if does_rel_exist:
-        data[key] = rel_path
-        return os.path.abspath(data[key])
+    # Check absolute & relative paths
+    if does_abs_exist or does_rel_exist:
+        if does_rel_exist: data[key] = rel_path
+
+        if Path(data[key]).is_dir():
+            return os.path.abspath(data[key])
+        else:
+            err(f"In config file, {data[key]} must be a directory")
+            raise NotADirectoryError()
 
     # Otherwise, invalid path
     if make_if_missing:
@@ -63,10 +68,10 @@ class _Config:
         # Init self
         try:
             # Load path fields
-            self.input_dir = _validate_path( self._config_file_parent_dir, data, "inputDir" )
-            self.output_dir = _validate_path( self._config_file_parent_dir, data, "outputDir", make_if_missing=True )
-            self.components_dir = _validate_path( self._config_file_parent_dir, data, "componentsDir" )
-            self.text_files_dir = _validate_path( self._config_file_parent_dir, data, "textFilesDir" )
+            self.input_dir = _validate_dir_path( self._config_file_parent_dir, data, "inputDir" )
+            self.output_dir = _validate_dir_path( self._config_file_parent_dir, data, "outputDir", make_if_missing=True )
+            self.components_dir = _validate_dir_path( self._config_file_parent_dir, data, "componentsDir" )
+            self.text_files_dir = _validate_dir_path( self._config_file_parent_dir, data, "textFilesDir" )
 
             # Create buffer staging directory
             self.backup_dir = Path(__file__).resolve().parent.parent / "stylus-tmp"
