@@ -78,19 +78,13 @@ def main() -> int:
         else:
             warn("Skipping HTML audit")
 
-        # 4. Minify assets
-        if not get_args().x:
-            minify()
-        else:
-            warn("Skipping minification")
-
-        # 5. Prune & save manifest
+        # 4. Prune & save manifest
         if config.manifest.prune_and_export(config) == 1:
             # Failed
             restore_output_from_backup()
             return 1
 
-        # 6. Build sitemap.xml
+        # 5. Build sitemap.xml
         sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
         if config.generate_sitemap:
             files = [str(p) for p in Path(config.output_dir).rglob("*")]

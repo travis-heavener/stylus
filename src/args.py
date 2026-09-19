@@ -14,7 +14,6 @@ def init_argparser() -> None:
     parser.add_argument("-c", action="store_true", help="Uses color for printing information to the terminal.")
     parser.add_argument("-f", action="store_true", help="Copy & rebuild all files instead of those that are unchanged.")
     parser.add_argument("-v", action="store_true", help="Prints additional debug info to the terminal.")
-    parser.add_argument("-x", action="store_true", help="Skips minification for all assets.")
 
     # Config file arg
     parser.add_argument(

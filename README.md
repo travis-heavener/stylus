@@ -29,7 +29,6 @@ Stylus has a few optional runtime arguments that are controlled outside of the c
 | `-c`                     | Uses color for printing information to the terminal.           |
 | `-f`                     | Copy & rebuild all files instead of those that are unchanged.  |
 | `-v`                     | Prints additional debug info to the terminal.                  |
-| `-x`                     | Skips minification for all assets.                             |
 | `--config /foo/bar.json` | Loads the config file at /foo/bar.json instead of config.json. |
 
 ## Components
