@@ -9,7 +9,7 @@ from logger import *
 from manifest import Manifest
 
 # Returns all paths that are nested or are relative to one-another (including those that match)
-def _get_nested_paths(*path_strs: list[str]) -> tuple[bool, tuple[str]]:
+def _get_nested_paths(*path_strs: list[str]) -> tuple[Path]:
     paths = tuple([ Path(p).expanduser().resolve() for p in path_strs ])
     invalid_paths = set()
 
@@ -26,7 +26,10 @@ def _get_nested_paths(*path_strs: list[str]) -> tuple[bool, tuple[str]]:
     return tuple(invalid_paths)
 
 # Helper to validate arguments
+_new_directories: list[Path] = []
 def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bool=False) -> str:
+    global _new_directories
+
     # Check if absolute or relative path exists
     rel_path = os.path.join(root_path, data[key])
     does_abs_exist = os.path.exists(data[key])
@@ -47,7 +50,8 @@ def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bo
         # Create missing directory
         new_path = Path(root_path).joinpath( data[key] )
         new_path.mkdir(parents=True, exist_ok=True)
-        vlog(f"Created missing output directory: {str(new_path)}")
+        vlog(f"Created missing directory: {str(new_path)}")
+        _new_directories.append( new_path )
 
         # Properly format path now that it exists
         return str(new_path.resolve())
@@ -57,15 +61,15 @@ def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bo
 
 # Config singleton
 class _Config:
-    def __init__(self, path: str) -> None:
+    def __init__(self, new_path: str) -> None:
         # Save the parent directory of the config.json file
-        self._config_file_parent_dir = Path(path).resolve().parent
+        self._config_file_parent_dir = Path(new_path).resolve().parent
 
         # Store build manifest alongside config file
         self.manifest_path = str(self._config_file_parent_dir / "build-manifest.json")
 
         # Load json
-        with open(path, "r") as f:
+        with open(new_path, "r") as f:
             data = json.load(f)
 
         # Init self
@@ -90,7 +94,16 @@ class _Config:
             if len(nested_paths):
                 err("Paths in configuration file must NOT be nested within one another")
                 for i, path in enumerate(nested_paths):
-                    print(f"  - Path #{i+1}: {nested_paths[i]}", file=sys.stderr)
+                    print(f"  - Path #{i+1}: {path}", file=sys.stderr)
+
+                    # Check new directories
+                    for new_path in _new_directories:
+                        try:
+                            if path.resolve() == new_path.resolve():
+                                print(f"      - Removed this directory since it was just created", file=sys.stderr)
+                                os.rmdir(str(new_path))
+                        except:
+                            err(f"Failed to remove directory: {path}")
 
                 # Finally, raise the exception to abort
                 raise Exception()
