@@ -13,7 +13,7 @@ def init_argparser() -> None:
     parser.add_argument("-a", action="store_true", help="Skips HTML audit on all assets.")
     parser.add_argument("-c", action="store_true", help="Uses color for printing information to the terminal.")
     parser.add_argument("-f", action="store_true", help="Copy & rebuild all files instead of those that are unchanged.")
-    parser.add_argument("-v", action="store_true", help="Prints additional debug info to the terminal.")
+    parser.add_argument("-q", action="store_true", help="Suppresses additional debug info from terminal.")
 
     # Config file arg
     parser.add_argument(

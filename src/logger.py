@@ -4,9 +4,9 @@ from typing import Any
 from args import get_args
 
 # Prints all arguments to console with a debug message,
-#   IF the -v flag is set (for verbose logging)
+#   IF the -q flag is not set (for verbose logging)
 def vlog(*args: list[Any]) -> None:
-    if get_args().v:
+    if not get_args().q:
         log(*args)
 
 # Prints all arguments to console with a debug message
