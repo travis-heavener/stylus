@@ -50,7 +50,7 @@ def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bo
         vlog(f"Created missing output directory: {str(new_path)}")
 
         # Properly format path now that it exists
-        return os.path.abspath(data[key])
+        return str(new_path.resolve())
     else:
         err(f"Unknown path for \"{key}\": \"{data[key]}\"")
         raise FileNotFoundError()
@@ -60,6 +60,9 @@ class _Config:
     def __init__(self, path: str) -> None:
         # Save the parent directory of the config.json file
         self._config_file_parent_dir = Path(path).resolve().parent
+
+        # Store build manifest alongside config file
+        self.manifest_path = str(self._config_file_parent_dir / "build-manifest.json")
 
         # Load json
         with open(path, "r") as f:
@@ -74,7 +77,7 @@ class _Config:
             self.text_files_dir = _validate_dir_path( self._config_file_parent_dir, data, "textFilesDir" )
 
             # Create buffer staging directory
-            self.backup_dir = Path(__file__).resolve().parent.parent / "stylus-tmp"
+            self.backup_dir = self._config_file_parent_dir / "stylus-tmp"
             if self.backup_dir.exists():
                 shutil.rmtree(self.backup_dir)
             self.backup_dir.mkdir(parents=True, exist_ok=True)
@@ -116,7 +119,7 @@ class _Config:
             sys.exit(1)
 
         # Load manifest
-        self.manifest = Manifest()
+        self.manifest = Manifest(self.manifest_path)
 
 # Global hidden config variable
 _config = None

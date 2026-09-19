@@ -3,8 +3,6 @@ import os
 
 from logger import *
 
-_build_manifest_path = "build-manifest.json"
-
 class Manifest:
     """
 
@@ -19,12 +17,13 @@ class Manifest:
     """
 
     # Loads the manifest from a file, if present
-    def __init__(self):
+    def __init__(self, manifest_path: str):
+        self.manifest_path = manifest_path
         self.files_updated: set[str] = set()
 
         try:
-            with open( os.path.join(os.getcwd(), _build_manifest_path), "r" ) as f:
-                vlog(f"Loaded {_build_manifest_path}")
+            with open( manifest_path, "r" ) as f:
+                vlog(f"Loaded manifest at {manifest_path}")
                 self.data = json.load(f)
         except FileNotFoundError:
             self.data = {
@@ -74,16 +73,15 @@ class Manifest:
     # Writes the manifest to the disk
     def export(self) -> int:
         try:
-            manifest_path = os.path.join(os.getcwd(), _build_manifest_path)
-            with open( manifest_path + ".tmp", "w" ) as f:
-                vlog(f"Updated {_build_manifest_path}")
+            with open( self.manifest_path + ".tmp", "w" ) as f:
+                vlog(f"Updated manifest at {self.manifest_path}")
                 json.dump(self.data, f)
 
             # Move updated manifest
-            os.replace( manifest_path + ".tmp", manifest_path )
+            os.replace( self.manifest_path + ".tmp", self.manifest_path )
             return 0
         except Exception as e:
-            err(f"Failed to write to {_build_manifest_path}\n{e}")
+            err(f"Failed to write to manifest at {self.manifest_path}\n{e}")
             return 1
 
     # Prunes AND exports in one line, returns 0 on success or 1 on error
