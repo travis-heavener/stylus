@@ -13,6 +13,7 @@ from pathlib import Path
 from time import time
 import traceback
 
+from args import init_argparser
 from auditor import audit_html
 from config import get_config, load_config
 from exception import StylusException
@@ -24,6 +25,9 @@ from tools import *
 def main() -> int:
     # Debug profiling
     start = time()
+
+    # Load arguments
+    init_argparser()
 
     # Load config
     try:
@@ -69,13 +73,13 @@ def main() -> int:
         inject_html(updated_build_files)
 
         # 3. Run accessibility audit on newly generated files
-        if not isarg("a"):
+        if not get_args().a:
             audit_html(updated_build_files)
         else:
             warn("Skipping HTML audit")
 
         # 4. Minify assets
-        if not isarg("x"):
+        if not get_args().x:
             minify()
         else:
             warn("Skipping minification")

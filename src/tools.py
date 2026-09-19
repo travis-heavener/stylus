@@ -52,7 +52,7 @@ def copy_source() -> tuple[str] | None:
         shutil.copytree(config.output_dir, config.backup_dir, dirs_exist_ok=True)
 
         # If build path changed (or force rebuild flag), purge all & rebuild
-        if isarg("f") or os.path.abspath(config.output_dir) != os.path.abspath(manifest.get_build_path()):
+        if get_args().f or os.path.abspath(config.output_dir) != os.path.abspath(manifest.get_build_path()):
             # Purge all, create new manifest
             shutil.rmtree(config.output_dir)
             manifest.clear()

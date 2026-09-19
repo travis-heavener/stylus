@@ -17,20 +17,20 @@ Copy the sample configuration file (config.sample.json) to config.json in the ro
 Update the configuration settings as needed.
 See [CONFIG.md](CONFIG.md) for documentation.
 
+Usage: `python3 src/main.py`
+
 ### Command-Line Arguments
 
-The `src/main.py` script has a few ephemeral controls that are controlled outside of the configuration file:
+Stylus has a few optional runtime arguments that are controlled outside of the configuration file:
 
-| Argument | Usage                                        | Description                                                    |
-|----------|----------------------------------------------|----------------------------------------------------------------|
-| -a       | `python3 src/main.py -a`                     | Skips HTML audit on all assets.                                |
-| -c       | `python3 src/main.py -c`                     | Uses color for printing information to the terminal.           |
-| -f       | `python3 src/main.py -f`                     | Copy & rebuild all files instead of those that are unchanged.  |
-| -v       | `python3 src/main.py -v`                     | Prints additional debug info to the terminal.                  |
-| -x       | `python3 src/main.py -x`                     | Skips minification for all assets.                             |
-| --config | `python3 src/main.py --config /foo/bar.json` | Loads the config file at /foo/bar.json instead of config.json. |
-
-Note: to use multiple arguments, combine them (ex: `-vcf` will print verbose logs with colored output and force-rebuilds all assets)
+| Argument / Flag          | Description                                                    |
+|--------------------------|----------------------------------------------------------------|
+| `-a`                     | Skips HTML audit on all assets.                                |
+| `-c`                     | Uses color for printing information to the terminal.           |
+| `-f`                     | Copy & rebuild all files instead of those that are unchanged.  |
+| `-v`                     | Prints additional debug info to the terminal.                  |
+| `-x`                     | Skips minification for all assets.                             |
+| `--config /foo/bar.json` | Loads the config file at /foo/bar.json instead of config.json. |
 
 ## Components
 

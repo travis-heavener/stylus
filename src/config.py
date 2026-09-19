@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 
+from args import get_args
 from logger import *
 from manifest import Manifest
 
@@ -82,38 +83,15 @@ class _Config:
         # Load manifest
         self.manifest = Manifest()
 
-# Gets the config path, either default or from argv
-def _get_config_path():
-    argv = sys.argv[1:]
-    config_path = None
-    cleaned_args = []
-
-    # Check argv
-    i = 0
-    while i < len(argv):
-        arg = argv[i]
-        if arg == "--config":
-            if i + 1 >= len(argv):
-                err("--config requires a path")
-                exit(1)
-            config_path = argv[i + 1]
-            i += 2
-        else:
-            cleaned_args.append(arg)
-            i += 1
-
-    # Put cleaned args back
-    sys.argv = [sys.argv[0]] + cleaned_args
-    return config_path
-
 # Global hidden config variable
 _config = None
 
 # Loads global config variable
 def load_config():
     global _config
+    args = get_args()
 
-    path = _get_config_path()
+    path = args.config
     if path is None:
         # Use default path
         path = Path(__file__).resolve().parent.parent / "config.json"
