@@ -74,9 +74,13 @@ class Manifest:
     # Writes the manifest to the disk
     def export(self) -> int:
         try:
-            with open( os.path.join(os.getcwd(), _build_manifest_path), "w" ) as f:
+            manifest_path = os.path.join(os.getcwd(), _build_manifest_path)
+            with open( manifest_path + ".tmp", "w" ) as f:
                 vlog(f"Updated {_build_manifest_path}")
                 json.dump(self.data, f)
+
+            # Move updated manifest
+            os.replace( manifest_path + ".tmp", manifest_path )
             return 0
         except Exception as e:
             err(f"Failed to write to {_build_manifest_path}\n{e}")
