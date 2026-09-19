@@ -72,7 +72,7 @@ class Manifest:
                     os.remove(path)
 
     # Writes the manifest to the disk
-    def export(self) -> None:
+    def export(self) -> int:
         try:
             with open( os.path.join(os.getcwd(), _build_manifest_path), "w" ) as f:
                 vlog(f"Updated {_build_manifest_path}")

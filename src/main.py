@@ -78,11 +78,8 @@ def main() -> int:
         else:
             warn("Skipping HTML audit")
 
-        # 4. Prune & save manifest
-        if config.manifest.prune_and_export(config) == 1:
-            # Failed
-            restore_output_from_backup()
-            return 1
+        # 4. Prune manifest
+        config.manifest.prune(config)
 
         # 5. Build sitemap.xml
         sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
@@ -95,6 +92,11 @@ def main() -> int:
             build_sitemap(sitemap_path, sitemap_files)
         elif os.path.exists( sitemap_path ):
             os.remove( sitemap_path )
+
+        # 6. Export manifest
+        if config.manifest.export() == 1:
+            restore_output_from_backup()
+            return 1
 
         # Log success
         log(f"Build success ({round(time() - start)}s).")
