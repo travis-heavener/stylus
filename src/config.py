@@ -9,10 +9,7 @@ from logger import *
 from manifest import Manifest
 
 # Helper to validate arguments
-def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
-    # Get path of root directory
-    root_path = os.getcwd()
-
+def _validate_path(root_path: str, data: dict, key: str, make_if_missing: bool=False) -> str:
     # Check if absolute or relative path exists
     rel_path = os.path.join(root_path, data[key])
     does_abs_exist = os.path.exists(data[key])
@@ -26,8 +23,9 @@ def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
     # Otherwise, invalid path
     if make_if_missing:
         # Create missing directory
-        Path(data[key]).mkdir(parents=True, exist_ok=True)
-        vlog(f"Created missing output directory: {data[key]}")
+        new_path = Path(root_path).joinpath( data[key] )
+        new_path.mkdir(parents=True, exist_ok=True)
+        vlog(f"Created missing output directory: {str(new_path)}")
 
         # Properly format path now that it exists
         return os.path.abspath(data[key])
@@ -38,6 +36,9 @@ def _validate_path(data: dict, key: str, make_if_missing: bool=False) -> str:
 # Config singleton
 class _Config:
     def __init__(self, path: str) -> None:
+        # Save the parent directory of the config.json file
+        self._config_file_parent_dir = Path(path).resolve().parent
+
         # Load json
         with open(path, "r") as f:
             data = json.load(f)
@@ -45,10 +46,10 @@ class _Config:
         # Init self
         try:
             # Load path fields
-            self.input_dir = _validate_path( data, "inputDir" )
-            self.output_dir = _validate_path( data, "outputDir", make_if_missing=True )
-            self.components_dir = _validate_path( data, "componentsDir" )
-            self.text_files_dir = _validate_path( data, "textFilesDir" )
+            self.input_dir = _validate_path( self._config_file_parent_dir, data, "inputDir" )
+            self.output_dir = _validate_path( self._config_file_parent_dir, data, "outputDir", make_if_missing=True )
+            self.components_dir = _validate_path( self._config_file_parent_dir, data, "componentsDir" )
+            self.text_files_dir = _validate_path( self._config_file_parent_dir, data, "textFilesDir" )
 
             # Create buffer staging directory
             self.backup_dir = Path(__file__).resolve().parent.parent / "stylus-tmp"
