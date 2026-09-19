@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 import os
 from pathlib import Path
-import re
 import shutil
+import xml.sax.saxutils
 
 from config import get_config
 from logger import *
@@ -141,7 +141,7 @@ def build_sitemap(sitemap_path: str, files: tuple[str]) -> None:
 
             # Write
             f.write(f"""    <url>
-        <loc>{config.base_address}{pretty_path.removeprefix("/")}</loc>
+        <loc>{ xml.sax.saxutils.escape(config.base_address + pretty_path.removeprefix("/")) }</loc>
         <lastmod>{timestamp}</lastmod>
         <priority>{priority:.2f}</priority>
     </url>\n""")
