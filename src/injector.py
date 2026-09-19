@@ -24,7 +24,7 @@ def inject_html(updated_build_files: tuple[str]) -> None:
     # Replace pseudo-components in components
     for key in components.keys():
         # Inject pseudo-components AFTER components
-        components[key] = inject_pseudos(None, components[key])
+        components[key] = inject_pseudos(None, components[key], component_name=key)
 
     # Precompile pattern
     components_pattern = re.compile(
@@ -64,7 +64,7 @@ def inject_html(updated_build_files: tuple[str]) -> None:
 __datetime_pattern = re.compile(r'<\$\s*Datetime\s*:\s*"([^"]+)"\s*/>')
 __textfile_pattern = re.compile(r'<\$\s*TextFile\s*:\s*"([^"]+)"\s*/>')
 __cachebust_attr_pattern = re.compile( r"""\$stylus-cache-bust-([A-Za-z_:][\w:.-]*)\s*=\s*(["'])((?:\\.|(?!\2).)*)\2""" )
-def inject_pseudos(current_path: str | None, body: str) -> str:
+def inject_pseudos(current_path: str | None, body: str, component_name: str | None = None) -> str:
     config = get_config()
 
     # Datetime pseudos
@@ -101,7 +101,12 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
 
             # Paths relative to current_path
             nonlocal current_path
-            if current_path is None: raise ValueError(match.group())
+            if current_path is None:
+                raise StylusException(
+                    f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\n"
+                    "Use absolute paths for cache busting in components.\n"
+                    f"Context:\n  {match.group()}"
+                )
 
             current_file = Path(current_path).resolve()
             current_rel_parent = current_file.parent.relative_to(output_dir)
@@ -110,7 +115,15 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
 
         def replace_cache_bust(match: re.Match) -> str:
             attr, quote, path = match.groups()
-            mod = int( resolve_cache_bust_path(match, path).stat().st_mtime * 1000 )
+
+            try:
+                mod = int( resolve_cache_bust_path(match, path).stat().st_mtime * 1000 )
+            except FileNotFoundError as e:
+                raise StylusException(
+                    "Failed to resolve Cache Bust pseudo-attribute (file not found)\n"
+                    f"Source: {(component_name + ' (Component)') if current_path is None else current_path}\n"
+                    f"Context:\n  {match.group()}"
+                )
 
             # Isolate URL hash, if exists
             if "#" in path:
@@ -130,8 +143,6 @@ def inject_pseudos(current_path: str | None, body: str) -> str:
             return f"{attr}={quote}{updated_base}{hash_part}{quote}"
 
         body = __cachebust_attr_pattern.sub(replace_cache_bust, body)
-    # except ValueError as e:
-    #     err(f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\nUse absolute paths for cache busting in components.\nContext:\n  {e}")
     except FileNotFoundError as e:
         raise StylusException(f"Failed to resolve Cache Bust pseudo-attribute\nFileNotFoundError: {e}")
 
