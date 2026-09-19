@@ -49,7 +49,13 @@ def copy_source() -> tuple[str] | None:
     # Verify output directory exists
     if os.path.exists(config.output_dir):
         # Backup current contents
-        shutil.copytree(config.output_dir, config.backup_dir, dirs_exist_ok=True)
+        if os.path.exists(config.backup_dir):
+            shutil.rmtree(config.backup_dir)
+        try:
+            shutil.copytree(config.output_dir, config.backup_dir)
+        except Exception:
+            shutil.rmtree(config.backup_dir, ignore_errors=True)
+            raise
 
         # If build path changed (or force rebuild flag), purge all & rebuild
         if get_args().f or os.path.abspath(config.output_dir) != os.path.abspath(manifest.get_build_path()):
