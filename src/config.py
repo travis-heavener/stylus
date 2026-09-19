@@ -8,6 +8,23 @@ from args import get_args
 from logger import *
 from manifest import Manifest
 
+# Returns all paths that are nested or are relative to one-another (including those that match)
+def _get_nested_paths(*path_strs: list[str]) -> tuple[bool, tuple[str]]:
+    paths = tuple([ Path(p).expanduser().resolve() for p in path_strs ])
+    invalid_paths = set()
+
+    for i, A in enumerate(paths):
+        for j, B in enumerate(paths):
+            if i == j: continue
+
+            # Verify non-cyclical
+            if A.is_relative_to(B) or B.is_relative_to(A):
+                invalid_paths.add(A)
+                invalid_paths.add(B)
+
+    # Return conflicting paths
+    return tuple(invalid_paths)
+
 # Helper to validate arguments
 def _validate_path(root_path: str, data: dict, key: str, make_if_missing: bool=False) -> str:
     # Check if absolute or relative path exists
@@ -57,6 +74,18 @@ class _Config:
                 shutil.rmtree(self.backup_dir)
             self.backup_dir.mkdir(parents=True, exist_ok=True)
             self.backup_dir = os.path.abspath( self.backup_dir )
+
+            # Verify directory fields are non-nested
+            nested_paths = _get_nested_paths(
+                self.input_dir, self.output_dir, self.components_dir, self.text_files_dir, self.backup_dir
+            )
+            if len(nested_paths):
+                err("Paths in configuration file must NOT be nested within one another")
+                for i, path in enumerate(nested_paths):
+                    print(f"  - Path #{i+1}: {nested_paths[i]}", file=sys.stderr)
+
+                # Finally, raise the exception to abort
+                raise Exception()
 
             self.build_file_exts = tuple(data["buildExtensions"])
             self.sitemap_file_exts = tuple(data["sitemapExtensions"])
