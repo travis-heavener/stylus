@@ -29,35 +29,28 @@ def _get_nested_paths(*path_strs: list[str]) -> tuple[Path]:
 _new_directories: list[Path] = []
 def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bool=False) -> str:
     global _new_directories
+    path = Path(data[key]).expanduser()
 
-    # Check if absolute or relative path exists
-    rel_path = os.path.join(root_path, data[key])
-    does_abs_exist = os.path.exists(data[key])
-    does_rel_exist = os.path.exists(rel_path)
+    # Resolve relative path
+    if not path.is_absolute():
+        path = Path(root_path) / path
 
-    # Check absolute & relative paths
-    if does_abs_exist or does_rel_exist:
-        if does_rel_exist: data[key] = rel_path
+    # Verify path is to a directory
+    if path.exists():
+        if path.is_dir():
+            return str(path.resolve())
+        err(f"In config file, {data[key]} must be a directory")
+        raise NotADirectoryError()
 
-        if Path(data[key]).is_dir():
-            return os.path.abspath(data[key])
-        else:
-            err(f"In config file, {data[key]} must be a directory")
-            raise NotADirectoryError()
-
-    # Otherwise, invalid path
+    # Otherwise, directory doesn't exist
     if make_if_missing:
-        # Create missing directory
-        new_path = Path(root_path).joinpath( data[key] )
-        new_path.mkdir(parents=True, exist_ok=True)
-        vlog(f"Created missing directory: {str(new_path)}")
-        _new_directories.append( new_path )
+        path.mkdir(parents=True, exist_ok=True)
+        _new_directories.append(path)
+        vlog(f"Created missing directory: {path}")
+        return str(path.resolve())
 
-        # Properly format path now that it exists
-        return str(new_path.resolve())
-    else:
-        err(f"Unknown path for \"{key}\": \"{data[key]}\"")
-        raise FileNotFoundError()
+    err(f"Unknown path for \"{key}\": \"{data[key]}\"")
+    raise FileNotFoundError()
 
 # Config singleton
 class _Config:
@@ -139,7 +132,8 @@ _config = None
 
 # Loads global config variable
 def load_config():
-    global _config
+    global _config, _new_directories
+    _new_directories.clear()
     args = get_args()
 
     path = args.config
