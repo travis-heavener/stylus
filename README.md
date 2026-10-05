@@ -1,3 +1,11 @@
+<div align="center">
+    <img src="logo.jpg" width="225" height="225">
+    <br>
+    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+    <img src="https://img.shields.io/badge/Language-Python-blue">
+    <img src="https://img.shields.io/github/stars/travis-heavener/stylus?style=flat&label=Stars&color=blue">
+</div>
+
 # Stylus
 ### Travis Heavener
 
