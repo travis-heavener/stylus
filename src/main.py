@@ -50,9 +50,7 @@ def main() -> int:
             config.manifest.prune(config)
 
             # Build sitemap.xml since deleted files from manifest.prune may persist in sitemap.xml
-            files = [str(p) for p in Path(config.output_dir).rglob("*")]
-            sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
-
+            files = [str(p) for p in Path(config.output_dir).rglob("*") if p.is_file()]
             sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
             if config.generate_sitemap:
                 sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
@@ -86,7 +84,7 @@ def main() -> int:
         # 5. Build sitemap.xml
         sitemap_path = os.path.join( config.output_dir, "sitemap.xml" )
         if config.generate_sitemap:
-            files = [str(p) for p in Path(config.output_dir).rglob("*")]
+            files = [str(p) for p in Path(config.output_dir).rglob("*") if p.is_file()]
             sitemap_files = tuple(
                 f for f in files
                 if f.endswith(config.sitemap_file_exts)
@@ -119,8 +117,12 @@ if __name__ == "__main__":
     status = main()
 
     # Remove backup contents
-    config = get_config()
-    backup_dir = Path(config.backup_dir)
-    if backup_dir.exists(): shutil.rmtree(backup_dir)
+    try:
+        config = get_config()
+        if config and config.backup_dir:
+            backup_dir = Path(config.backup_dir)
+            if backup_dir.exists(): shutil.rmtree(backup_dir)
+    except Exception:
+        pass
 
     exit(status)

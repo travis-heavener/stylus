@@ -6,7 +6,7 @@ import re
 from config import get_config
 from exception import StylusException
 from logger import *
-from tools import vlog
+from tools import vlog, DATETIME_PATTERN, TEXTFILE_PATTERN, resolve_text_file_path, get_component_name
 
 # Injects HTML into the pseudo-element components
 def inject_html(updated_build_files: tuple[str]) -> None:
@@ -14,11 +14,9 @@ def inject_html(updated_build_files: tuple[str]) -> None:
 
     # Read all components
     components = {
-        str(p).removeprefix(config.components_dir).removeprefix("/").replace("/", ".") \
-            .removesuffix(".html").removesuffix(".htm")
-        : p.read_text()
+        get_component_name(p, config.components_dir): p.read_text()
         for p in Path(config.components_dir).rglob("*")
-        if p.is_file()
+        if p.is_file() and p.suffix.lower() in (".html", ".htm")
     }
 
     # Replace pseudo-components in components
@@ -26,33 +24,51 @@ def inject_html(updated_build_files: tuple[str]) -> None:
         # Inject pseudo-components AFTER components
         components[key] = inject_pseudos(None, components[key], component_name=key)
 
-    # Precompile pattern
+    # Precompile pattern: match any component name (not pseudo-components which have colons)
     components_pattern = re.compile(
-        rf"(.*?)<\$\s*({ '|'.join(map(re.escape, components.keys())) })\s*\/\s*>",
+        r"(.*?)<\$\s*([^:\"'\s/>]+)\s*\/\s*>",
         flags=re.MULTILINE
     )
 
     # Shorthand to Regex replace elements
     def comp(m: re.Match) -> str:
+        comp_name = m.group(2).strip()
+        if comp_name not in components:
+            raise KeyError(comp_name)
+
         # Fix indents
         if str.isspace(m.group(1)):
             indent = m.group(1).replace("\n", "")
-            return indent + components[ m.group(2).strip() ].replace("\n", f"\n{indent}")
+            return indent + components[ comp_name ].replace("\n", f"\n{indent}")
         else:
             # No indents
-            return m.group(1) + components[ m.group(2).strip() ]
+            return m.group(1) + components[ comp_name ]
 
     # Find each build file in the subtree
     for file_name in updated_build_files:
         file = Path(file_name)
-        # Replace all pseudo-elements with their HTML components
-        try:
-            body = components_pattern.sub( comp, file.read_text() )
-        except KeyError as e:
-            raise StylusException(f"Invalid component: {e}")
+        body = file.read_text()
+
+        # Recursively replace component references with cycle detection (N1)
+        depth = 0
+        max_depth = 50
+        while components_pattern.search(body):
+            depth += 1
+            if depth > max_depth:
+                raise StylusException(f"Circular component reference detected in {file}")
+            try:
+                body = components_pattern.sub( comp, body )
+            except KeyError as e:
+                raise StylusException(f"Invalid component: {e}")
 
         # Inject pseudo-components that may be hiding in html file
         body = inject_pseudos(str(file), body)
+
+        # Check for any remaining unknown components or pseudo-components
+        leftover = re.search(r'<\$\s*([^>]+?)\s*\/?\s*>', body)
+        if leftover:
+            raw = leftover.group(1).strip().removesuffix("/").strip()
+            raise StylusException(f"Invalid component: '{raw}'")
 
         # Write back to file
         file.write_text(body)
@@ -61,14 +77,12 @@ def inject_html(updated_build_files: tuple[str]) -> None:
         vlog(f"Built {file}")
 
 # Injects pseudo-components into the HTML
-__datetime_pattern = re.compile(r'<\$\s*Datetime\s*:\s*"([^"]+)"\s*/>')
-__textfile_pattern = re.compile(r'<\$\s*TextFile\s*:\s*"([^"]+)"\s*/>')
 __cachebust_attr_pattern = re.compile( r"""\$stylus-cache-bust-([A-Za-z_:][\w:.-]*)\s*=\s*(["'])((?:\\.|(?!\2).)*)\2""" )
 def inject_pseudos(current_path: str | None, body: str, component_name: str | None = None) -> str:
     config = get_config()
 
     # Datetime pseudos
-    body = __datetime_pattern.sub(
+    body = DATETIME_PATTERN.sub(
         lambda m: datetime.now().strftime(m.group(1)),
         body
     )
@@ -76,10 +90,11 @@ def inject_pseudos(current_path: str | None, body: str, component_name: str | No
     # TextFile pseudos
     try:
         def read_text(path: str) -> str:
-            with open(os.path.join(config.text_files_dir, path), "r") as f:
+            resolved_path = resolve_text_file_path(config.text_files_dir, path)
+            with open(resolved_path, "r") as f:
                 return f.read()
 
-        body = __textfile_pattern.sub(
+        body = TEXTFILE_PATTERN.sub(
             lambda f: read_text(f.group(1)),
             body
         )
@@ -97,27 +112,48 @@ def inject_pseudos(current_path: str | None, body: str, component_name: str | No
             if "#" in attr_path: attr_path = attr_path[ :attr_path.index("#") ]
 
             # Web-root relative paths
-            if attr_path.startswith("/"): return input_dir / attr_path.removeprefix("/")
+            if attr_path.startswith("/"):
+                target = (input_dir / attr_path.removeprefix("/")).resolve()
+            else:
+                # Paths relative to current_path
+                nonlocal current_path
+                if current_path is None:
+                    raise StylusException(
+                        f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\n"
+                        "Use absolute paths for cache busting in components.\n"
+                        f"Context:\n  {match.group()}"
+                    )
 
-            # Paths relative to current_path
-            nonlocal current_path
-            if current_path is None:
+                current_file = Path(current_path).resolve()
+                current_rel_parent = current_file.parent.relative_to(output_dir)
+                source_parent = input_dir / current_rel_parent
+                target = (source_parent / attr_path).resolve()
+
+            if not target.is_relative_to(input_dir):
                 raise StylusException(
-                    f"Cannot use Cache Bust pseudo-attribute w/ relative path in component.\n"
-                    "Use absolute paths for cache busting in components.\n"
+                    "Failed to resolve Cache Bust pseudo-attribute (path escapes input directory)\n"
+                    f"Source: {(component_name + ' (Component)') if current_path is None else current_path}\n"
                     f"Context:\n  {match.group()}"
                 )
 
-            current_file = Path(current_path).resolve()
-            current_rel_parent = current_file.parent.relative_to(output_dir)
-            source_parent = input_dir / current_rel_parent
-            return (source_parent / attr_path).resolve()
+            if not target.exists():
+                raise FileNotFoundError(f"'{target}' does not exist")
+
+            if target.is_dir():
+                for idx in config.index_files:
+                    candidate = target / idx
+                    if candidate.is_file():
+                        target = candidate
+                        break
+
+            return target
 
         def replace_cache_bust(match: re.Match) -> str:
             attr, quote, path = match.groups()
 
             try:
-                mod = int( resolve_cache_bust_path(match, path).stat().st_mtime * 1000 )
+                target_path = resolve_cache_bust_path(match, path)
+                mod = int( target_path.stat().st_mtime * 1000 )
             except FileNotFoundError as e:
                 raise StylusException(
                     "Failed to resolve Cache Bust pseudo-attribute (file not found)\n"

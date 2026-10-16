@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 from logger import *
 
@@ -43,6 +44,28 @@ class Manifest:
     def clear(self) -> None:
         self.files_updated.clear()
         self.data["paths"].clear()
+        if "components" in self.data:
+            self.data["components"].clear()
+        if "textFiles" in self.data:
+            self.data["textFiles"].clear()
+
+    # Gets the stored components mapping
+    def get_components(self) -> dict[str, float]:
+        return self.data.get("components", {})
+
+    # Sets the stored components mapping
+    def set_components(self, components: dict[str, float]) -> None:
+        self.data["components"] = components
+
+    # Gets the last update timestamp of a text file, or -1
+    def get_textfile(self, path: str) -> float:
+        return self.data.get("textFiles", {}).get(path, -1)
+
+    # Stores the update timestamp of a text file
+    def put_textfile(self, path: str, mtime: float) -> None:
+        if "textFiles" not in self.data:
+            self.data["textFiles"] = {}
+        self.data["textFiles"][path] = mtime
 
     # Adds or updates a path in the paths dict
     def put(self, path: str, last_update_ts: float) -> None:
@@ -57,11 +80,19 @@ class Manifest:
     def prune(self, config: Any) -> None:
         keys = [k for k in self.data["paths"].keys()]
         for path in keys:
-            # Ignore files only in output dir (e.g. sitemap)
-            if self.data["paths"][path] == -1: continue
+            # Ignore files only in output dir (e.g. sitemap), but prune if removed
+            if self.data["paths"][path] == -1:
+                if not os.path.exists(path):
+                    del self.data["paths"][path]
+                continue
 
-            # Resolve to source path
-            src_path = path.replace(config.output_dir, config.input_dir)
+            # Resolve to source path cleanly without substring replacement
+            try:
+                rel = Path(path).resolve().relative_to(Path(config.output_dir).resolve())
+                src_path = str(Path(config.input_dir).resolve() / rel)
+            except ValueError:
+                src_path = path
+
             if not os.path.exists(src_path):
                 del self.data["paths"][path]
                 vlog(f"Pruned {src_path}")
@@ -69,6 +100,11 @@ class Manifest:
                 # Remove from output dir as well
                 if os.path.exists(path):
                     os.remove(path)
+
+        if "textFiles" in self.data:
+            for tf_path in list(self.data["textFiles"].keys()):
+                if not os.path.exists(tf_path):
+                    del self.data["textFiles"][tf_path]
 
     # Writes the manifest to the disk
     def export(self) -> int:
