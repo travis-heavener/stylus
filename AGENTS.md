@@ -100,12 +100,13 @@ Stylus/
 | **M1** | Auditor misses `<img>` forms or mis-identifies embedded `alt=` | Use `HTMLParser` to inspect actual tag attributes; properly accepts empty/unquoted/boolean `alt` while rejecting `data-note="...alt=..."`. |
 | **M2** | HTML auditor case-sensitivity | Parsed attributes and tags are lowercased by `HTMLParser`. |
 | **M3** | Unknown component syntax silently untouched | `components_pattern` matches any component syntax; raises `StylusException` on unknown component. |
-| **M4** | Cache-bust paths escaping `inputDir` | `resolve_cache_bust_path` verifies `target.is_relative_to(input_dir)`. |
+| **M4** | Cache-bust paths escaping `inputDir` / symlinked directory index bypass | `resolve_cache_bust_path` verifies `target.is_relative_to(input_dir)` and re-resolves and validates directory index candidates. |
 | **M5** | Relative cache-bust `ValueError` | Properly resolve relative paths against output-relative parent directory. |
 | **M6** | Sitemap XML escaping | Escaped URLs with `xml.sax.saxutils.escape`. |
 | **M7** | Atomic manifest write | Write to `.tmp` file then `os.replace`. |
 | **M8** | Configured paths being files | `_validate_dir_path` checks `path.is_dir()`. |
 | **N1** | Circular component references / exponential memory exhaustion | DFS cycle detection before recursive expansion in `inject_html()` prevents exponential memory growth. |
 | **N2** | Auditor rejects valid unquoted attribute values | `HTMLParser` natively parses unquoted HTML5 attribute values. |
-| **N3** | Decreased modification timestamps not detected | Compare mtimes with `!=` instead of `>=` and `>`, catching backward timestamp jumps. |
+| **N3** | Decreased or preserved modification timestamps with content changes | Compare mtimes with `!=` and track SHA-256 content hashes in manifest for components, text files, and build/source assets (`filecmp.cmp`). |
 | **N4** | Component-name generation breaks on Windows | `get_component_name()` uses `Path.relative_to().parts` joined with `.`. |
+| **N5** | Disabling sitemap leaves stale entry in manifest | Immediately remove sitemap path from manifest paths dict and output directory upon disabling `generateSitemap`. |

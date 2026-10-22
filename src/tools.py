@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import filecmp
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -36,9 +38,24 @@ _components_changed = False
 _datetime_components: set[str] = set()
 _comp_textfiles: dict[str, set[str]] = {}
 _manifest_textfile_snapshot: dict[str, float] = {}
+_manifest_textfile_hash_snapshot: dict[str, str] = {}
+_current_textfile_hashes: dict[str, str] = {}
 _all_dependent_textfiles: set[str] = set()
 _backup_established = False
 _initial_output_existed = False
+
+def compute_file_hash(path: Path | str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(65536):
+            h.update(chunk)
+    return h.hexdigest()
+
+def get_textfile_hash(tf_path: Path | str) -> str:
+    path_str = str(tf_path)
+    if path_str not in _current_textfile_hashes:
+        _current_textfile_hashes[path_str] = compute_file_hash(tf_path)
+    return _current_textfile_hashes[path_str]
 
 def init_backup_state() -> None:
     global _backup_established, _initial_output_existed
@@ -59,6 +76,7 @@ def copy_if_newer(src: str, dest: str) -> str:
     manifest_mtime = manifest.get(os.path.abspath(dest))
 
     is_build_file = dest.endswith(config.build_file_exts)
+    current_file_hash = None
 
     # Check if dest file already exists and is in the manifest
     if os.path.exists(dest) and manifest_mtime > 0:
@@ -71,6 +89,24 @@ def copy_if_newer(src: str, dest: str) -> str:
         # Check for Datetime and TextFile dependencies for build files
         is_datetime_page = False
         is_textfile_outdated = False
+        is_content_changed = False
+
+        # Only when timestamps match can content changes with preserved timestamps be missed (N3)
+        saved_file_hash = manifest.get_file_hash(os.path.abspath(dest))
+        if manifest_mtime == src_mtime:
+            try:
+                current_file_hash = compute_file_hash(src)
+                if saved_file_hash is not None and current_file_hash != saved_file_hash:
+                    is_content_changed = True
+            except Exception:
+                pass
+
+            if not is_build_file and not is_content_changed:
+                try:
+                    if not filecmp.cmp(src, dest, shallow=False):
+                        is_content_changed = True
+                except Exception:
+                    pass
 
         if is_build_file:
             try:
@@ -90,8 +126,8 @@ def copy_if_newer(src: str, dest: str) -> str:
                     if ref in _comp_textfiles:
                         dependent_textfiles.update(_comp_textfiles[ref])
 
+                _all_dependent_textfiles.update(dependent_textfiles)
                 for tf_rel in dependent_textfiles:
-                    _all_dependent_textfiles.add(tf_rel)
                     tf_path = resolve_text_file_path(config.text_files_dir, tf_rel)
                     if not tf_path.exists():
                         is_textfile_outdated = True
@@ -102,15 +138,34 @@ def copy_if_newer(src: str, dest: str) -> str:
                     if tf_mtime > dest_mtime or saved_tf_mtime != tf_mtime:
                         is_textfile_outdated = True
                         break
+                    # Content hash check for text files (N3)
+                    saved_tf_hash = _manifest_textfile_hash_snapshot.get(str(tf_path))
+                    if saved_tf_hash is not None:
+                        try:
+                            if get_textfile_hash(tf_path) != saved_tf_hash:
+                                is_textfile_outdated = True
+                                break
+                        except Exception:
+                            pass
             except Exception:
                 pass
 
-        # Compare mod timestamps and dependency freshness (N3: manifest_mtime == src_mtime)
-        if manifest_mtime == src_mtime and not is_html_with_old_comps and not is_datetime_page and not is_textfile_outdated:
+        # Compare mod timestamps, content changes, and dependency freshness (N3: manifest_mtime == src_mtime)
+        if manifest_mtime == src_mtime and not is_content_changed and not is_html_with_old_comps and not is_datetime_page and not is_textfile_outdated:
+            if saved_file_hash is None and current_file_hash is not None:
+                manifest.put_file_hash(os.path.abspath(dest), current_file_hash)
             return dest
 
     # Base case, copy as usual
     manifest.put(os.path.abspath(dest), src_mtime)
+    if current_file_hash is None:
+        try:
+            current_file_hash = compute_file_hash(src)
+        except Exception:
+            current_file_hash = None
+    if current_file_hash is not None:
+        manifest.put_file_hash(os.path.abspath(dest), current_file_hash)
+
     if is_build_file:
         try:
             src_content = Path(src).read_text()
@@ -135,20 +190,25 @@ def copy_source() -> tuple[str] | None:
     init_backup_state()
 
     # Snapshot existing textfile timestamps from manifest for stable invalidation decisions (H1)
-    global _manifest_textfile_snapshot, _all_dependent_textfiles
+    global _manifest_textfile_snapshot, _manifest_textfile_hash_snapshot, _all_dependent_textfiles, _current_textfile_hashes
     manifest.files_updated.clear()
     _manifest_textfile_snapshot = dict(manifest.data.get("textFiles", {}))
+    _manifest_textfile_hash_snapshot = dict(manifest.data.get("textFileHashes", {}))
+    _current_textfile_hashes.clear()
     _all_dependent_textfiles.clear()
 
     # Discover all component files (N4: cross-platform path handling)
     comp_files = [p for p in Path(config.components_dir).rglob("*") if p.is_file() and p.suffix.lower() in (".html", ".htm")]
     current_components: dict[str, float] = {}
+    current_comp_hashes: dict[str, str] = {}
     comp_contents: dict[str, str] = {}
     for p in comp_files:
         key = get_component_name(p, config.components_dir)
         current_components[key] = p.stat().st_mtime
         try:
-            comp_contents[key] = p.read_text()
+            content_bytes = p.read_bytes()
+            comp_contents[key] = content_bytes.decode("utf-8", errors="replace")
+            current_comp_hashes[key] = hashlib.sha256(content_bytes).hexdigest()
         except Exception:
             pass
 
@@ -180,10 +240,13 @@ def copy_source() -> tuple[str] | None:
                         changed = True
 
     saved_components = manifest.get_components()
+    saved_comp_hashes = manifest.get_component_hashes()
     _components_changed = False
     if set(current_components.keys()) != set(saved_components.keys()):
         _components_changed = True
     elif any(current_components[k] != saved_components.get(k, 0) for k in current_components):
+        _components_changed = True
+    elif any(current_comp_hashes.get(k) != saved_comp_hashes.get(k) for k in current_comp_hashes):
         _components_changed = True
 
     all_comp_entries = [Path(config.components_dir)] + list(Path(config.components_dir).rglob("*"))
@@ -192,6 +255,10 @@ def copy_source() -> tuple[str] | None:
     # Copy helper
     def copy(src: str, dest: str) -> str:
         manifest.put(os.path.abspath(dest), Path(src).stat().st_mtime)
+        try:
+            manifest.put_file_hash(os.path.abspath(dest), compute_file_hash(src))
+        except Exception:
+            pass
         if dest.endswith(config.build_file_exts):
             try:
                 src_content = Path(src).read_text()
@@ -210,6 +277,10 @@ def copy_source() -> tuple[str] | None:
             tf_path = resolve_text_file_path(config.text_files_dir, tf_rel)
             if tf_path.exists():
                 manifest.put_textfile(str(tf_path), tf_path.stat().st_mtime)
+                try:
+                    manifest.put_textfile_hash(str(tf_path), get_textfile_hash(tf_path))
+                except Exception:
+                    pass
 
     # Verify output directory exists
     if _initial_output_existed:
@@ -234,12 +305,14 @@ def copy_source() -> tuple[str] | None:
             # Copy new
             shutil.copytree(config.input_dir, config.output_dir, copy_function=copy)
             manifest.set_components(current_components)
+            manifest.set_component_hashes(current_comp_hashes)
             _sync_textfile_manifest()
             log("Cleaned existing build content.")
         else: # Build path matches manifest & not a force rebuild
             # Copy only updated
             shutil.copytree(config.input_dir, config.output_dir, copy_function=copy_if_newer, dirs_exist_ok=True)
             manifest.set_components(current_components)
+            manifest.set_component_hashes(current_comp_hashes)
             _sync_textfile_manifest()
 
             if len(manifest.files_updated) > 0:
@@ -255,6 +328,7 @@ def copy_source() -> tuple[str] | None:
         manifest.set_build_path(config.output_dir)
         shutil.copytree(config.input_dir, config.output_dir, copy_function=copy)
         manifest.set_components(current_components)
+        manifest.set_component_hashes(current_comp_hashes)
         _sync_textfile_manifest()
 
     # Return updated files

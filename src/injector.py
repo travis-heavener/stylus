@@ -173,10 +173,20 @@ def inject_pseudos(current_path: str | None, body: str, component_name: str | No
 
             if target.is_dir():
                 for idx in config.index_files:
-                    candidate = target / idx
-                    if candidate.is_file():
-                        target = candidate
-                        break
+                    try:
+                        candidate = (target / idx).resolve()
+                        if candidate.is_file():
+                            target = candidate
+                            break
+                    except (OSError, RuntimeError):
+                        continue
+
+            if not target.is_relative_to(input_dir):
+                raise StylusException(
+                    "Failed to resolve Cache Bust pseudo-attribute (path escapes input directory)\n"
+                    f"Source: {(component_name + ' (Component)') if current_path is None else current_path}\n"
+                    f"Context:\n  {match.group()}"
+                )
 
             return target
 

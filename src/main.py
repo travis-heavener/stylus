@@ -57,8 +57,10 @@ def main() -> int:
             if config.generate_sitemap:
                 sitemap_files = tuple([f for f in files if f.endswith(config.sitemap_file_exts)])
                 build_sitemap(sitemap_path, sitemap_files)
-            elif os.path.exists( sitemap_path ):
-                os.remove( sitemap_path )
+            else:
+                if os.path.exists( sitemap_path ):
+                    os.remove( sitemap_path )
+                config.manifest.remove(os.path.abspath(sitemap_path))
 
             # Export manifest
             if config.manifest.export() == 1:
@@ -92,8 +94,10 @@ def main() -> int:
                 if f.endswith(config.sitemap_file_exts)
             )
             build_sitemap(sitemap_path, sitemap_files)
-        elif os.path.exists( sitemap_path ):
-            os.remove( sitemap_path )
+        else:
+            if os.path.exists( sitemap_path ):
+                os.remove( sitemap_path )
+            config.manifest.remove(os.path.abspath(sitemap_path))
 
         # 6. Export manifest
         if config.manifest.export() == 1:
