@@ -105,7 +105,7 @@ Stylus/
 | **M6** | Sitemap XML escaping | Escaped URLs with `xml.sax.saxutils.escape`. |
 | **M7** | Atomic manifest write | Write to `.tmp` file then `os.replace`. |
 | **M8** | Configured paths being files | `_validate_dir_path` checks `path.is_dir()`. |
-| **N1** | Nested component references not expanded | Recursive component expansion loop in `inject_html()` with cycle detection up to depth 50. |
+| **N1** | Circular component references / exponential memory exhaustion | DFS cycle detection before recursive expansion in `inject_html()` prevents exponential memory growth. |
 | **N2** | Auditor rejects valid unquoted attribute values | `HTMLParser` natively parses unquoted HTML5 attribute values. |
 | **N3** | Decreased modification timestamps not detected | Compare mtimes with `!=` instead of `>=` and `>`, catching backward timestamp jumps. |
 | **N4** | Component-name generation breaks on Windows | `get_component_name()` uses `Path.relative_to().parts` joined with `.`. |
