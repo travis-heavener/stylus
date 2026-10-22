@@ -90,7 +90,7 @@ Stylus/
 
 | ID | Issue | Solution |
 |---|---|---|
-| **H1** | `TextFile` changes don't invalidate dependent pages / inconsistent traversal | Snapshot text-file timestamps before traversal; compare text file mtimes against snapshot; sync manifest after copy pass. |
+| **H1** | `TextFile` changes don't invalidate dependent pages / hash migration | Snapshot text-file timestamps before traversal; compare text file mtimes against snapshot; sync manifest after copy pass; rebuild pages referencing unhashed text files for seamless schema migration. |
 | **H2** | `Datetime` pages don't rebuild on subsequent builds | Identify pages containing `Datetime` directly or via components; invalidate them on subsequent builds. |
 | **H3** | Component deletion unhandled; empty component dir crash | Set `default=0` on `max()`; store component keys in manifest to detect additions/deletions/edits. |
 | **H4** | Manifest persistence ordering | Export manifest after pruning and sitemap build. |
@@ -107,6 +107,8 @@ Stylus/
 | **M8** | Configured paths being files | `_validate_dir_path` checks `path.is_dir()`. |
 | **N1** | Circular component references / exponential memory exhaustion | DFS cycle detection before recursive expansion in `inject_html()` prevents exponential memory growth. |
 | **N2** | Auditor rejects valid unquoted attribute values | `HTMLParser` natively parses unquoted HTML5 attribute values. |
-| **N3** | Decreased or preserved modification timestamps with content changes | Compare mtimes with `!=` and track SHA-256 content hashes in manifest for components, text files, and build/source assets (`filecmp.cmp`). |
+| **N3** | Decreased or preserved modification timestamps with content changes | Compare mtimes with `!=` and track SHA-256 content hashes in manifest for components, text files, and build/source assets (`filecmp.cmp`). Build files without saved hashes rebuild once for migration. |
 | **N4** | Component-name generation breaks on Windows | `get_component_name()` uses `Path.relative_to().parts` joined with `.`. |
 | **N5** | Disabling sitemap leaves stale entry in manifest | Immediately remove sitemap path from manifest paths dict and output directory upon disabling `generateSitemap`. |
+| **N6** | Future-dated component or TextFile dependencies cause repeated rebuilds | Rely on manifest snapshot comparisons (`!=`) and content hashes instead of destination HTML mtime (`dest_mtime`). |
+| **N7** | Verification failures swallowed and mistaken for unchanged files | Raise contextual `StylusException` on hashing, reading, or comparison failures instead of silently swallowing exceptions. |

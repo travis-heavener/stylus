@@ -8,6 +8,7 @@ import shutil
 import xml.sax.saxutils
 
 from config import get_config
+from exception import StylusException
 from logger import *
 
 DATETIME_PATTERN = re.compile(r'<\$\s*Datetime\s*:\s*["\']([^"\']+)["\']\s*\/\s*>')
@@ -33,7 +34,6 @@ def get_component_name(p: Path, components_dir: str | Path) -> str:
     return ".".join(parts)
 
 # File copy helpers
-_latest_component_mtime = -1
 _components_changed = False
 _datetime_components: set[str] = set()
 _comp_textfiles: dict[str, set[str]] = {}
@@ -83,72 +83,82 @@ def copy_if_newer(src: str, dest: str) -> str:
         # Get existing file mtime
         dest_mtime = Path(dest).stat().st_mtime
 
-        # Check if this is an HTML file and components have changed (or component directory is newer)
-        is_html_with_old_comps = is_build_file and (_components_changed or _latest_component_mtime > dest_mtime)
+        # Check if this is an HTML file and components have changed (N6: rely on _components_changed, not dest_mtime)
+        is_html_with_old_comps = is_build_file and _components_changed
 
         # Check for Datetime and TextFile dependencies for build files
         is_datetime_page = False
         is_textfile_outdated = False
         is_content_changed = False
 
-        # Only when timestamps match can content changes with preserved timestamps be missed (N3)
+        # Check source content hash (N3)
         saved_file_hash = manifest.get_file_hash(os.path.abspath(dest))
-        if manifest_mtime == src_mtime:
+        if is_build_file and saved_file_hash is None:
+            # Migration: force build files without saved hash to rebuild once (H1/N3)
+            is_content_changed = True
+        elif manifest_mtime == src_mtime:
             try:
                 current_file_hash = compute_file_hash(src)
-                if saved_file_hash is not None and current_file_hash != saved_file_hash:
-                    is_content_changed = True
-            except Exception:
-                pass
+            except Exception as e:
+                raise StylusException(f"Failed to verify source file '{src}': {e}") from e
+
+            if saved_file_hash is not None and current_file_hash != saved_file_hash:
+                is_content_changed = True
 
             if not is_build_file and not is_content_changed:
                 try:
                     if not filecmp.cmp(src, dest, shallow=False):
                         is_content_changed = True
-                except Exception:
-                    pass
+                except Exception as e:
+                    raise StylusException(f"Failed to verify asset file '{src}': {e}") from e
 
         if is_build_file:
             try:
                 src_content = Path(src).read_text()
-                # Check for Datetime directly in page or via components
-                if DATETIME_PATTERN.search(src_content):
-                    is_datetime_page = True
-                else:
-                    refs = set(COMPONENT_REF_PATTERN.findall(src_content))
-                    if refs & _datetime_components:
-                        is_datetime_page = True
+            except Exception as e:
+                raise StylusException(f"Failed to read source build file '{src}': {e}") from e
 
-                # Check for TextFiles directly in page or via components
-                dependent_textfiles = set(TEXTFILE_PATTERN.findall(src_content))
+            # Check for Datetime directly in page or via components
+            if DATETIME_PATTERN.search(src_content):
+                is_datetime_page = True
+            else:
                 refs = set(COMPONENT_REF_PATTERN.findall(src_content))
-                for ref in refs:
-                    if ref in _comp_textfiles:
-                        dependent_textfiles.update(_comp_textfiles[ref])
+                if refs & _datetime_components:
+                    is_datetime_page = True
 
-                _all_dependent_textfiles.update(dependent_textfiles)
-                for tf_rel in dependent_textfiles:
-                    tf_path = resolve_text_file_path(config.text_files_dir, tf_rel)
-                    if not tf_path.exists():
-                        is_textfile_outdated = True
-                        break
-                    tf_mtime = tf_path.stat().st_mtime
-                    # Use snapshot of manifest textfile timestamps so other pages don't see mutated state (H1)
-                    saved_tf_mtime = _manifest_textfile_snapshot.get(str(tf_path), -1)
-                    if tf_mtime > dest_mtime or saved_tf_mtime != tf_mtime:
-                        is_textfile_outdated = True
-                        break
-                    # Content hash check for text files (N3)
-                    saved_tf_hash = _manifest_textfile_hash_snapshot.get(str(tf_path))
-                    if saved_tf_hash is not None:
-                        try:
-                            if get_textfile_hash(tf_path) != saved_tf_hash:
-                                is_textfile_outdated = True
-                                break
-                        except Exception:
-                            pass
-            except Exception:
-                pass
+            # Check for TextFiles directly in page or via components
+            dependent_textfiles = set(TEXTFILE_PATTERN.findall(src_content))
+            refs = set(COMPONENT_REF_PATTERN.findall(src_content))
+            for ref in refs:
+                if ref in _comp_textfiles:
+                    dependent_textfiles.update(_comp_textfiles[ref])
+
+            _all_dependent_textfiles.update(dependent_textfiles)
+            for tf_rel in dependent_textfiles:
+                tf_path = resolve_text_file_path(config.text_files_dir, tf_rel)
+                if not tf_path.exists():
+                    is_textfile_outdated = True
+                    break
+                tf_mtime = tf_path.stat().st_mtime
+                # Use snapshot of manifest textfile timestamps so other pages don't see mutated state (H1, N6)
+                saved_tf_mtime = _manifest_textfile_snapshot.get(str(tf_path), -1)
+                if saved_tf_mtime != tf_mtime:
+                    is_textfile_outdated = True
+                    break
+                # Content hash check for text files (N3)
+                saved_tf_hash = _manifest_textfile_hash_snapshot.get(str(tf_path))
+                if saved_tf_hash is None:
+                    # Migration: text file has no saved hash, force dependent page rebuild once (H1/N3)
+                    is_textfile_outdated = True
+                    break
+                try:
+                    current_tf_hash = get_textfile_hash(tf_path)
+                except Exception as e:
+                    raise StylusException(f"Failed to verify TextFile dependency '{tf_path}': {e}") from e
+
+                if current_tf_hash != saved_tf_hash:
+                    is_textfile_outdated = True
+                    break
 
         # Compare mod timestamps, content changes, and dependency freshness (N3: manifest_mtime == src_mtime)
         if manifest_mtime == src_mtime and not is_content_changed and not is_html_with_old_comps and not is_datetime_page and not is_textfile_outdated:
@@ -161,8 +171,8 @@ def copy_if_newer(src: str, dest: str) -> str:
     if current_file_hash is None:
         try:
             current_file_hash = compute_file_hash(src)
-        except Exception:
-            current_file_hash = None
+        except Exception as e:
+            raise StylusException(f"Failed to hash source file '{src}': {e}") from e
     if current_file_hash is not None:
         manifest.put_file_hash(os.path.abspath(dest), current_file_hash)
 
@@ -175,8 +185,8 @@ def copy_if_newer(src: str, dest: str) -> str:
                 if ref in _comp_textfiles:
                     tfs.update(_comp_textfiles[ref])
             _all_dependent_textfiles.update(tfs)
-        except Exception:
-            pass
+        except Exception as e:
+            raise StylusException(f"Failed to read source build file '{src}': {e}") from e
     vlog(f"Copied {src} --> {dest}")
     return shutil.copy2(src, dest)
 
@@ -209,10 +219,10 @@ def copy_source() -> tuple[str] | None:
             content_bytes = p.read_bytes()
             comp_contents[key] = content_bytes.decode("utf-8", errors="replace")
             current_comp_hashes[key] = hashlib.sha256(content_bytes).hexdigest()
-        except Exception:
-            pass
+        except Exception as e:
+            raise StylusException(f"Failed to read component file '{p}': {e}") from e
 
-    global _datetime_components, _comp_textfiles, _components_changed, _latest_component_mtime
+    global _datetime_components, _comp_textfiles, _components_changed
     _datetime_components = set()
     for key, content in comp_contents.items():
         if DATETIME_PATTERN.search(content):
@@ -249,16 +259,13 @@ def copy_source() -> tuple[str] | None:
     elif any(current_comp_hashes.get(k) != saved_comp_hashes.get(k) for k in current_comp_hashes):
         _components_changed = True
 
-    all_comp_entries = [Path(config.components_dir)] + list(Path(config.components_dir).rglob("*"))
-    _latest_component_mtime = max((p.stat().st_mtime for p in all_comp_entries), default=0)
-
     # Copy helper
     def copy(src: str, dest: str) -> str:
         manifest.put(os.path.abspath(dest), Path(src).stat().st_mtime)
         try:
             manifest.put_file_hash(os.path.abspath(dest), compute_file_hash(src))
-        except Exception:
-            pass
+        except Exception as e:
+            raise StylusException(f"Failed to hash source file '{src}': {e}") from e
         if dest.endswith(config.build_file_exts):
             try:
                 src_content = Path(src).read_text()
@@ -268,8 +275,8 @@ def copy_source() -> tuple[str] | None:
                     if ref in _comp_textfiles:
                         tfs.update(_comp_textfiles[ref])
                 _all_dependent_textfiles.update(tfs)
-            except Exception:
-                pass
+            except Exception as e:
+                raise StylusException(f"Failed to read source build file '{src}': {e}") from e
         return shutil.copy2(src, dest)
 
     def _sync_textfile_manifest() -> None:
@@ -279,8 +286,8 @@ def copy_source() -> tuple[str] | None:
                 manifest.put_textfile(str(tf_path), tf_path.stat().st_mtime)
                 try:
                     manifest.put_textfile_hash(str(tf_path), get_textfile_hash(tf_path))
-                except Exception:
-                    pass
+                except Exception as e:
+                    raise StylusException(f"Failed to hash TextFile dependency '{tf_path}': {e}") from e
 
     # Verify output directory exists
     if _initial_output_existed:
