@@ -73,12 +73,8 @@ class _Config:
             self.components_dir = _validate_dir_path( self._config_file_parent_dir, data, "componentsDir" )
             self.text_files_dir = _validate_dir_path( self._config_file_parent_dir, data, "textFilesDir" )
 
-            # Create buffer staging directory
-            self.backup_dir = self._config_file_parent_dir / "stylus-tmp"
-            if self.backup_dir.exists():
-                shutil.rmtree(self.backup_dir)
-            self.backup_dir.mkdir(parents=True, exist_ok=True)
-            self.backup_dir = os.path.abspath( self.backup_dir )
+            # Buffer staging directory
+            self.backup_dir = os.path.abspath( self._config_file_parent_dir / "stylus-tmp" )
 
             # Verify directory fields are non-nested
             nested_paths = _get_nested_paths(
@@ -100,6 +96,10 @@ class _Config:
 
                 # Finally, raise the exception to abort
                 raise Exception()
+
+            # Clean any stale staging directory from previous runs
+            if os.path.exists(self.backup_dir):
+                shutil.rmtree(self.backup_dir)
 
             self.build_file_exts = tuple(data["buildExtensions"])
             self.sitemap_file_exts = tuple(data["sitemapExtensions"])

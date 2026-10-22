@@ -95,7 +95,7 @@ Stylus/
 | **H3** | Component deletion unhandled; empty component dir crash | Set `default=0` on `max()`; store component keys in manifest to detect additions/deletions/edits. |
 | **H4** | Manifest persistence ordering | Export manifest after pruning and sitemap build. |
 | **H5** | Config path resolution | Resolved paths relative to configuration file location via `_validate_dir_path()`. |
-| **H6** | Nested/cyclical directories | `_get_nested_paths()` verifies no configured directories nest within each other. |
+| **H6** | Nested/cyclical directories / `stylus-tmp` conflict deletion | `_get_nested_paths()` verifies no configured directories nest within each other; backup path is validated before cleaning stale staging files. |
 | **H7** | Failed backup can delete pre-existing output | Track `_backup_established` and `_initial_output_existed`; never delete pre-existing output if backup failed. |
 | **M1** | Auditor misses `<img>` forms or mis-identifies embedded `alt=` | Use `HTMLParser` to inspect actual tag attributes; properly accepts empty/unquoted/boolean `alt` while rejecting `data-note="...alt=..."`. |
 | **M2** | HTML auditor case-sensitivity | Parsed attributes and tags are lowercased by `HTMLParser`. |
