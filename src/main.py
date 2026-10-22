@@ -41,6 +41,8 @@ def main() -> int:
         exit(1)
 
     try:
+        init_backup_state()
+
         # 1. Copy source
         updated_files = copy_source()
 

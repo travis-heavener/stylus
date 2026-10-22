@@ -40,6 +40,15 @@ _all_dependent_textfiles: set[str] = set()
 _backup_established = False
 _initial_output_existed = False
 
+def init_backup_state() -> None:
+    global _backup_established, _initial_output_existed
+    _backup_established = False
+    try:
+        config = get_config()
+        _initial_output_existed = os.path.exists(config.output_dir)
+    except Exception:
+        _initial_output_existed = False
+
 # Copies a file if it's newer than what's in the dest directory
 def copy_if_newer(src: str, dest: str) -> str:
     config = get_config()
@@ -118,8 +127,12 @@ def copy_if_newer(src: str, dest: str) -> str:
 
 # Used to copy the new source
 def copy_source() -> tuple[str] | None:
+    global _backup_established, _initial_output_existed
     config = get_config()
     manifest = config.manifest
+
+    # Track backup state to prevent deleting pre-existing output if backup fails (H7)
+    init_backup_state()
 
     # Snapshot existing textfile timestamps from manifest for stable invalidation decisions (H1)
     global _manifest_textfile_snapshot, _all_dependent_textfiles
@@ -197,11 +210,6 @@ def copy_source() -> tuple[str] | None:
             tf_path = resolve_text_file_path(config.text_files_dir, tf_rel)
             if tf_path.exists():
                 manifest.put_textfile(str(tf_path), tf_path.stat().st_mtime)
-
-    # Track backup state to prevent deleting pre-existing output if backup fails (H7)
-    global _backup_established, _initial_output_existed
-    _backup_established = False
-    _initial_output_existed = os.path.exists(config.output_dir)
 
     # Verify output directory exists
     if _initial_output_existed:
