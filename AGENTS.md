@@ -48,8 +48,9 @@ Stylus/
      - Compares component names and timestamps against `manifest.get_components()`.
      - Detects component additions, edits, and deletions (using `!=` to detect older/reverted timestamps (**N3**)); invalidates all HTML files if components changed.
    - **Datetime Pages (H2)**:
-     - Checks whether an HTML page directly contains `<$ Datetime:... />` or depends on a component that does.
-     - Invalidates and rebuilds `Datetime` pages on subsequent builds so dynamic timestamps remain current.
+     - Extracts `<$ Datetime:... />` format strings directly from pages and inherited components.
+     - Evaluates whether rendered datetime output has changed compared to saved values in `build-manifest.json`.
+     - Invalidate and rebuilds `Datetime` pages only when formatted output changes (e.g. year/day turnover), keeping unchanged builds up-to-date.
    - **TextFile Dependencies (H1)**:
      - Takes an immutable snapshot of manifest text-file timestamps before traversing files (`_manifest_textfile_snapshot`), preventing traversal mutations from masking changes across multiple pages.
      - Checks direct and component-inherited `<$ TextFile:"..." />` dependencies.
@@ -91,7 +92,7 @@ Stylus/
 | ID | Issue | Solution |
 |---|---|---|
 | **H1** | `TextFile` changes don't invalidate dependent pages / hash migration | Snapshot text-file timestamps before traversal; compare text file mtimes against snapshot; sync manifest after copy pass; rebuild pages referencing unhashed text files for seamless schema migration. |
-| **H2** | `Datetime` pages don't rebuild on subsequent builds | Identify pages containing `Datetime` directly or via components; invalidate them on subsequent builds. |
+| **H2** | `Datetime` pages don't rebuild on subsequent builds / redundant unchanged rebuilds | Track evaluated format strings in manifest (`datetimes`); rebuild `Datetime` pages when rendered timestamp values change while preserving incremental up-to-date status when values are unchanged. |
 | **H3** | Component deletion unhandled; empty component dir crash | Set `default=0` on `max()`; store component keys in manifest to detect additions/deletions/edits. |
 | **H4** | Manifest persistence ordering | Export manifest after pruning and sitemap build. |
 | **H5** | Config path resolution | Resolved paths relative to configuration file location via `_validate_dir_path()`. |

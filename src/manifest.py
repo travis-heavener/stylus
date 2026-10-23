@@ -54,6 +54,18 @@ class Manifest:
             self.data["textFileHashes"].clear()
         if "fileHashes" in self.data:
             self.data["fileHashes"].clear()
+        if "datetimes" in self.data:
+            self.data["datetimes"].clear()
+
+    # Gets the stored rendered value of a Datetime format, or None
+    def get_datetime(self, fmt: str) -> str | None:
+        return self.data.get("datetimes", {}).get(fmt)
+
+    # Stores the rendered value of a Datetime format
+    def put_datetime(self, fmt: str, val: str) -> None:
+        if "datetimes" not in self.data:
+            self.data["datetimes"] = {}
+        self.data["datetimes"][fmt] = val
 
     # Gets the stored components mapping
     def get_components(self) -> dict[str, float]:

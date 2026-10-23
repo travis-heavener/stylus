@@ -36,6 +36,8 @@ def get_component_name(p: Path, components_dir: str | Path) -> str:
 # File copy helpers
 _components_changed = False
 _datetime_components: set[str] = set()
+_comp_datetime_fmts: dict[str, set[str]] = {}
+_all_referenced_datetime_fmts: set[str] = set()
 _comp_textfiles: dict[str, set[str]] = {}
 _manifest_textfile_snapshot: dict[str, float] = {}
 _manifest_textfile_hash_snapshot: dict[str, str] = {}
@@ -92,7 +94,7 @@ def copy_if_newer(src: str, dest: str) -> str:
         is_html_with_old_comps = is_build_file and _components_changed
 
         # Check for Datetime and TextFile dependencies for build files
-        is_datetime_page = False
+        is_datetime_outdated = False
         is_textfile_outdated = False
         is_content_changed = False
 
@@ -123,13 +125,21 @@ def copy_if_newer(src: str, dest: str) -> str:
             except Exception as e:
                 raise StylusException(f"Failed to read source build file '{src}': {e}") from e
 
-            # Check for Datetime directly in page or via components
-            if DATETIME_PATTERN.search(src_content):
-                is_datetime_page = True
-            else:
-                refs = set(COMPONENT_REF_PATTERN.findall(src_content))
-                if refs & _datetime_components:
-                    is_datetime_page = True
+            # Check for Datetime directly in page or via components (Content-Aware H2)
+            page_datetime_fmts = set(DATETIME_PATTERN.findall(src_content))
+            refs = set(COMPONENT_REF_PATTERN.findall(src_content))
+            for ref in refs:
+                if ref in _comp_datetime_fmts:
+                    page_datetime_fmts.update(_comp_datetime_fmts[ref])
+
+            _all_referenced_datetime_fmts.update(page_datetime_fmts)
+            now = datetime.now()
+            for fmt in page_datetime_fmts:
+                saved_val = manifest.get_datetime(fmt)
+                current_val = now.strftime(fmt)
+                if saved_val is None or saved_val != current_val:
+                    is_datetime_outdated = True
+                    break
 
             # Check for TextFiles directly in page or via components
             dependent_textfiles = set(TEXTFILE_PATTERN.findall(src_content))
@@ -166,7 +176,7 @@ def copy_if_newer(src: str, dest: str) -> str:
                     break
 
         # Compare mod timestamps, content changes, and dependency freshness (N3: manifest_mtime == src_mtime)
-        if manifest_mtime == src_mtime and not is_content_changed and not is_html_with_old_comps and not is_datetime_page and not is_textfile_outdated:
+        if manifest_mtime == src_mtime and not is_content_changed and not is_html_with_old_comps and not is_datetime_outdated and not is_textfile_outdated:
             if saved_file_hash is None and current_file_hash is not None:
                 manifest.put_file_hash(os.path.abspath(dest), current_file_hash)
             return dest
@@ -184,8 +194,13 @@ def copy_if_newer(src: str, dest: str) -> str:
     if is_build_file:
         try:
             src_content = Path(src).read_text()
-            tfs = set(TEXTFILE_PATTERN.findall(src_content))
+            page_datetime_fmts = set(DATETIME_PATTERN.findall(src_content))
             refs = set(COMPONENT_REF_PATTERN.findall(src_content))
+            for ref in refs:
+                if ref in _comp_datetime_fmts:
+                    page_datetime_fmts.update(_comp_datetime_fmts[ref])
+            _all_referenced_datetime_fmts.update(page_datetime_fmts)
+            tfs = set(TEXTFILE_PATTERN.findall(src_content))
             for ref in refs:
                 if ref in _comp_textfiles:
                     tfs.update(_comp_textfiles[ref])
@@ -205,12 +220,13 @@ def copy_source() -> tuple[str] | None:
     init_backup_state()
 
     # Snapshot existing textfile timestamps from manifest for stable invalidation decisions (H1)
-    global _manifest_textfile_snapshot, _manifest_textfile_hash_snapshot, _all_dependent_textfiles, _current_textfile_hashes
+    global _manifest_textfile_snapshot, _manifest_textfile_hash_snapshot, _all_dependent_textfiles, _current_textfile_hashes, _all_referenced_datetime_fmts
     manifest.files_updated.clear()
     _manifest_textfile_snapshot = dict(manifest.data.get("textFiles", {}))
     _manifest_textfile_hash_snapshot = dict(manifest.data.get("textFileHashes", {}))
     _current_textfile_hashes.clear()
     _all_dependent_textfiles.clear()
+    _all_referenced_datetime_fmts.clear()
 
     # Discover all component files (N4: cross-platform path handling)
     comp_files = [p for p in Path(config.components_dir).rglob("*") if p.is_file() and p.suffix.lower() in (".html", ".htm")]
@@ -227,11 +243,14 @@ def copy_source() -> tuple[str] | None:
         except Exception as e:
             raise StylusException(f"Failed to read component file '{p}': {e}") from e
 
-    global _datetime_components, _comp_textfiles, _components_changed
+    global _datetime_components, _comp_datetime_fmts, _comp_textfiles, _components_changed
     _datetime_components = set()
+    _comp_datetime_fmts = {}
     for key, content in comp_contents.items():
-        if DATETIME_PATTERN.search(content):
+        fmts = set(DATETIME_PATTERN.findall(content))
+        if fmts:
             _datetime_components.add(key)
+            _comp_datetime_fmts[key] = fmts
 
     _comp_textfiles = {}
     for key, content in comp_contents.items():
@@ -248,6 +267,11 @@ def copy_source() -> tuple[str] | None:
                 if ref in _datetime_components and key not in _datetime_components:
                     _datetime_components.add(key)
                     changed = True
+                if ref in _comp_datetime_fmts:
+                    before_len = len(_comp_datetime_fmts.get(key, ()))
+                    _comp_datetime_fmts.setdefault(key, set()).update(_comp_datetime_fmts[ref])
+                    if len(_comp_datetime_fmts[key]) > before_len:
+                        changed = True
                 if ref in _comp_textfiles:
                     before_len = len(_comp_textfiles.get(key, ()))
                     _comp_textfiles.setdefault(key, set()).update(_comp_textfiles[ref])
@@ -274,8 +298,13 @@ def copy_source() -> tuple[str] | None:
         if dest.endswith(config.build_file_exts):
             try:
                 src_content = Path(src).read_text()
-                tfs = set(TEXTFILE_PATTERN.findall(src_content))
+                page_datetime_fmts = set(DATETIME_PATTERN.findall(src_content))
                 refs = set(COMPONENT_REF_PATTERN.findall(src_content))
+                for ref in refs:
+                    if ref in _comp_datetime_fmts:
+                        page_datetime_fmts.update(_comp_datetime_fmts[ref])
+                _all_referenced_datetime_fmts.update(page_datetime_fmts)
+                tfs = set(TEXTFILE_PATTERN.findall(src_content))
                 for ref in refs:
                     if ref in _comp_textfiles:
                         tfs.update(_comp_textfiles[ref])
@@ -293,6 +322,11 @@ def copy_source() -> tuple[str] | None:
                     manifest.put_textfile_hash(str(tf_path), get_textfile_hash(tf_path))
                 except Exception as e:
                     raise StylusException(f"Failed to hash TextFile dependency '{tf_path}': {e}") from e
+
+    def _sync_datetime_manifest() -> None:
+        now = datetime.now()
+        for fmt in _all_referenced_datetime_fmts:
+            manifest.put_datetime(fmt, now.strftime(fmt))
 
     # Verify output directory exists
     if _initial_output_existed:
@@ -319,6 +353,7 @@ def copy_source() -> tuple[str] | None:
             manifest.set_components(current_components)
             manifest.set_component_hashes(current_comp_hashes)
             _sync_textfile_manifest()
+            _sync_datetime_manifest()
             log("Cleaned existing build content.")
         else: # Build path matches manifest & not a force rebuild
             # Copy only updated
@@ -326,6 +361,7 @@ def copy_source() -> tuple[str] | None:
             manifest.set_components(current_components)
             manifest.set_component_hashes(current_comp_hashes)
             _sync_textfile_manifest()
+            _sync_datetime_manifest()
 
             if len(manifest.files_updated) > 0:
                 log("Updated modified build content.")
@@ -342,6 +378,7 @@ def copy_source() -> tuple[str] | None:
         manifest.set_components(current_components)
         manifest.set_component_hashes(current_comp_hashes)
         _sync_textfile_manifest()
+        _sync_datetime_manifest()
 
     # Return updated files
     return tuple(manifest.files_updated)
