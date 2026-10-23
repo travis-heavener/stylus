@@ -43,6 +43,10 @@ _current_textfile_hashes: dict[str, str] = {}
 _all_dependent_textfiles: set[str] = set()
 _backup_established = False
 _initial_output_existed = False
+_preserve_backup = False
+
+def should_preserve_backup() -> bool:
+    return _preserve_backup
 
 def compute_file_hash(path: Path | str) -> str:
     h = hashlib.sha256()
@@ -58,8 +62,9 @@ def get_textfile_hash(tf_path: Path | str) -> str:
     return _current_textfile_hashes[path_str]
 
 def init_backup_state() -> None:
-    global _backup_established, _initial_output_existed
+    global _backup_established, _initial_output_existed, _preserve_backup
     _backup_established = False
+    _preserve_backup = False
     try:
         config = get_config()
         _initial_output_existed = os.path.exists(config.output_dir)
@@ -342,23 +347,41 @@ def copy_source() -> tuple[str] | None:
     return tuple(manifest.files_updated)
 
 # Restores the output directory from backup
-def restore_output_from_backup() -> None:
+def restore_output_from_backup() -> bool:
     config = get_config()
-    global _backup_established, _initial_output_existed
+    global _backup_established, _initial_output_existed, _preserve_backup
 
     # If backup was not established, do NOT delete pre-existing output directory (H7)
     if not _backup_established:
         if _initial_output_existed:
-            return
+            return True
         if os.path.exists(config.output_dir):
-            shutil.rmtree(config.output_dir)
-        return
+            try:
+                shutil.rmtree(config.output_dir)
+            except Exception as e:
+                err(f"Failed to clean incomplete output directory: {e}")
+                return False
+        return True
 
-    # Backup was established; wipe corrupted output and restore cleanly from backup
-    if os.path.exists(config.backup_dir):
+    # Backup was established; wipe corrupted output and restore cleanly from backup (H8)
+    _preserve_backup = True
+    if not os.path.isdir(config.backup_dir):
+        err(
+            f"CRITICAL: Backup directory is missing; "
+            f"cannot restore previous output: '{config.backup_dir}'"
+        )
+        return False
+
+    try:
         if os.path.exists(config.output_dir):
             shutil.rmtree(config.output_dir)
         shutil.copytree(config.backup_dir, config.output_dir)
+        _preserve_backup = False
+        return True
+    except Exception as e:
+        err(f"Failed to restore output directory from backup: {e}")
+        err(f"CRITICAL: Intact backup of previous output has been preserved at '{config.backup_dir}' for manual recovery.")
+        return False
 
 # Creates public/sitemap.xml with update timestamps for all HTML files
 def build_sitemap(sitemap_path: str, files: tuple[str]) -> None:

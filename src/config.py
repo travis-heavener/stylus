@@ -26,7 +26,18 @@ def _get_nested_paths(*path_strs: list[str]) -> tuple[Path]:
     return tuple(invalid_paths)
 
 # Helper to validate arguments
-_new_directories: list[Path] = []
+_new_directories: list[list[Path]] = []
+def _cleanup_new_directories() -> None:
+    global _new_directories
+    for created_chain in _new_directories:
+        for p in created_chain:
+            try:
+                if p.exists():
+                    os.rmdir(str(p))
+            except Exception:
+                pass
+    _new_directories.clear()
+
 def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bool=False) -> str:
     global _new_directories
     path = Path(data[key]).expanduser()
@@ -44,8 +55,14 @@ def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bo
 
     # Otherwise, directory doesn't exist
     if make_if_missing:
+        created = []
+        curr = path
+        while not curr.exists() and curr != curr.parent:
+            created.append(curr)
+            curr = curr.parent
+
         path.mkdir(parents=True, exist_ok=True)
-        _new_directories.append(path)
+        _new_directories.append(created)
         vlog(f"Created missing directory: {path}")
         return str(path.resolve())
 
@@ -55,6 +72,9 @@ def _validate_dir_path(root_path: str, data: dict, key: str, make_if_missing: bo
 # Config singleton
 class _Config:
     def __init__(self, new_path: str) -> None:
+        global _new_directories
+        _new_directories.clear()
+
         # Save the parent directory of the config.json file
         self._config_file_parent_dir = Path(new_path).resolve().parent
 
@@ -86,14 +106,20 @@ class _Config:
                     print(f"  - Path #{i+1}: {path}", file=sys.stderr)
 
                     # Check new directories
-                    for new_path in _new_directories:
+                    for created_chain in _new_directories:
                         try:
-                            if path.resolve() == new_path.resolve():
+                            if created_chain and path.resolve() == created_chain[0].resolve():
                                 print(f"      - Removed this directory since it was just created", file=sys.stderr)
-                                os.rmdir(str(new_path))
+                                for p in created_chain:
+                                    try:
+                                        if p.exists():
+                                            os.rmdir(str(p))
+                                    except Exception:
+                                        pass
                         except:
                             err(f"Failed to remove directory: {path}")
 
+                _cleanup_new_directories()
                 # Finally, raise the exception to abort
                 raise Exception()
 
@@ -117,15 +143,23 @@ class _Config:
             # HTML auditor
             self.html_lang = data["htmlLang"]
             self.canonical_ignore: list[str] = data["canonicalIgnore"]
+
+            # Load manifest inside protected block before clearing _new_directories (N9)
+            self.manifest = Manifest(self.manifest_path)
+
+            # Successful init, clear tracking
+            _new_directories.clear()
         except KeyError as e:
+            _cleanup_new_directories()
             err(f"Failed to parse config file, missing JSON key: \"{e}\"")
             sys.exit(1)
-        except:
-            err(f"Failed to parse config file")
+        except Exception as e:
+            _cleanup_new_directories()
+            if str(e):
+                err(f"Failed to initialize configuration: {e}")
+            else:
+                err("Failed to parse config file")
             sys.exit(1)
-
-        # Load manifest
-        self.manifest = Manifest(self.manifest_path)
 
 # Global hidden config variable
 _config = None

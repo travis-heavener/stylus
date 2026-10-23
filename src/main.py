@@ -107,6 +107,10 @@ def main() -> int:
         # Log success
         log(f"Build success ({round(time() - start)}s).")
         return 0
+    except KeyboardInterrupt:
+        err(f"\nBuild interrupted by user ({round(time() - start)}s).")
+        restore_output_from_backup()
+        return 130
     except Exception as e:
         err(f"Build failed ({round(time() - start)}s):")
 
@@ -122,12 +126,14 @@ def main() -> int:
 if __name__ == "__main__":
     status = main()
 
-    # Remove backup contents
+    # Remove backup contents only if restoration did not fail (H8)
     try:
-        config = get_config()
-        if config and config.backup_dir:
-            backup_dir = Path(config.backup_dir)
-            if backup_dir.exists(): shutil.rmtree(backup_dir)
+        from tools import should_preserve_backup
+        if not should_preserve_backup():
+            config = get_config()
+            if config and config.backup_dir:
+                backup_dir = Path(config.backup_dir)
+                if backup_dir.exists(): shutil.rmtree(backup_dir)
     except Exception:
         pass
 

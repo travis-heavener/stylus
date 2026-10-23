@@ -95,7 +95,7 @@ Stylus/
 | **H3** | Component deletion unhandled; empty component dir crash | Set `default=0` on `max()`; store component keys in manifest to detect additions/deletions/edits. |
 | **H4** | Manifest persistence ordering | Export manifest after pruning and sitemap build. |
 | **H5** | Config path resolution | Resolved paths relative to configuration file location via `_validate_dir_path()`. |
-| **H6** | Nested/cyclical directories / `stylus-tmp` conflict deletion | `_get_nested_paths()` verifies no configured directories nest within each other; backup path is validated before cleaning stale staging files. |
+| **H6** | Nested/cyclical directories / `stylus-tmp` conflict deletion / intermediate dir cleanup | `_get_nested_paths()` verifies no configured directories nest within each other; backup path is validated before cleaning stale staging files; created directory hierarchies and intermediate ancestors are cleanly rolled back in reverse order on failure. |
 | **H7** | Failed backup can delete pre-existing output | `init_backup_state()` initializes backup tracking before component discovery; never delete pre-existing output if backup was not established. |
 | **M1** | Auditor misses `<img>` forms or mis-identifies embedded `alt=` | Use `HTMLParser` to inspect actual tag attributes; properly accepts empty/unquoted/boolean `alt` while rejecting `data-note="...alt=..."`. |
 | **M2** | HTML auditor case-sensitivity | Parsed attributes and tags are lowercased by `HTMLParser`. |
@@ -112,3 +112,5 @@ Stylus/
 | **N5** | Disabling sitemap leaves stale entry in manifest | Immediately remove sitemap path from manifest paths dict and output directory upon disabling `generateSitemap`. |
 | **N6** | Future-dated component or TextFile dependencies cause repeated rebuilds | Rely on manifest snapshot comparisons (`!=`) and content hashes instead of destination HTML mtime (`dest_mtime`). |
 | **N7** | Verification failures swallowed and mistaken for unchanged files | Raise contextual `StylusException` on hashing, reading, or comparison failures instead of silently swallowing exceptions. |
+| **H8** | Failed output restoration destroys intact backup | `restore_output_from_backup()` tracks restoration success and sets preservation flag; `main.py` entry point preserves `stylus-tmp/` on restoration error and logs manual recovery path. |
+| **N9** | Manifest loading failure leaves newly created output directory behind | Initialize `Manifest` inside the protected initialization block before clearing `_new_directories`; clean up directory creation chain on manifest load failures. |
